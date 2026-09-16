@@ -1,0 +1,31 @@
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local agent settings
+/.agents/
+/.codex/
+
+# Editor-specific local files
+.idea/
+.vs/
+*.suo
+*.user
+*.swp
+*.swo
+*~
+
+# Logs, caches, and temporary files
+*.log
+*.tmp
+*.temp
+.cache/
+
+# Operating system files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
