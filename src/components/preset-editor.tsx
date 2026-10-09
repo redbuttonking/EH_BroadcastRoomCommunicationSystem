@@ -63,7 +63,10 @@ export function PresetEditor({
   }
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      scrollBehavior: 'auto',
+    }),
   )
   const moveTo = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || to >= items.length) return

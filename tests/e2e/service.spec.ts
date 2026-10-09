@@ -224,6 +224,14 @@ test('preset drag and keyboard reorder preserve text, confirm movement and keep 
   await page.mouse.up()
   await expect(texts.first()).toHaveValue(original[0])
   await expect(editor.locator('.preset-drag-preview')).toHaveCount(0)
+  // focus() does not wait for the pointer reorder's CSS transitions to settle.
+  await editor
+    .locator('.editor-item')
+    .evaluateAll((nodes) =>
+      Promise.all(
+        nodes.flatMap((node) => node.getAnimations().map((animation) => animation.finished)),
+      ),
+    )
   await editor.getByRole('button', { name: '문구 1 드래그하여 이동', exact: true }).focus()
   await page.keyboard.press('Space', { delay: 60 })
   await expect(editor.locator('.preset-drag-preview')).toBeVisible()
