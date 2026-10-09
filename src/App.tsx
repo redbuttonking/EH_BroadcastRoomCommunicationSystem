@@ -108,6 +108,12 @@ export function App({ client, preview = false }: Props & { preview?: boolean }) 
   const [theme, setTheme] = useState(getTheme)
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute(
+        'content',
+        getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim(),
+      )
   }, [theme])
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
@@ -210,7 +216,7 @@ function Lobby({ client }: Props) {
   }
   return (
     <>
-      <header className="lobby-header">
+      <header className={`lobby-header${state.account ? '' : ' is-signed-out'}`}>
         <Brand />
         <div className="lobby-actions">
           <ThemeToggle />
@@ -554,6 +560,7 @@ function RoomView({
   const draftRef = useRef('')
   const draftAttempt = useRef<{ text: string; id: string } | null>(null)
   const [editingPresets, setEditingPresets] = useState(false)
+  const [presetsSaved, setPresetsSaved] = useState(false)
   const {
     collection,
     error: presetsError,
@@ -562,6 +569,7 @@ function RoomView({
   const presets = collection?.items ?? []
   const [error, setError] = useState('')
   const [dialog, setDialog] = useState<'close' | 'leave' | null>(null)
+  const [dialogError, setDialogError] = useState('')
   const [busy, setBusy] = useState(false)
   const [hasNew, setHasNew] = useState(false)
   const [cooldown, setCooldown] = useState(false)
@@ -570,6 +578,29 @@ function RoomView({
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottom = useRef(true)
   const composeRef = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const input = composeRef.current
+    if (!input) return
+    let width = input.clientWidth
+    let frame = 0
+    const resize = () => {
+      input.style.height = 'auto'
+      input.style.height = `${Math.min(90, Math.max(46, input.scrollHeight + 2))}px`
+    }
+    resize()
+    const observer = new ResizeObserver(() => {
+      if (width !== input.clientWidth) {
+        width = input.clientWidth
+        cancelAnimationFrame(frame)
+        frame = requestAnimationFrame(resize)
+      }
+    })
+    observer.observe(input)
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [draft])
   const previousCount = useRef(0)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const moved = useRef(false)
@@ -622,13 +653,13 @@ function RoomView({
   }
   const endRoom = async (action = dialog) => {
     if (!action) return
+    setDialogError('')
     setBusy(true)
     try {
       await client.request({ type: action })
       setDialog(null)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '요청을 처리하지 못했습니다.')
-      setDialog(null)
+      setDialogError(reason instanceof Error ? reason.message : '요청을 처리하지 못했습니다.')
     } finally {
       setBusy(false)
     }
@@ -670,7 +701,14 @@ function RoomView({
             </Button>
           </div>
           <span className="toolbar-divider" />
-          <Button variant="ghost" size="sm" onClick={() => setDialog('leave')}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDialogError('')
+              setDialog('leave')
+            }}
+          >
             <LogOut size={16} />
             <span>나가기</span>
           </Button>
@@ -679,7 +717,10 @@ function RoomView({
               className="close-room-shortcut"
               variant="outline"
               size="sm"
-              onClick={() => setDialog('close')}
+              onClick={() => {
+                setDialogError('')
+                setDialog('close')
+              }}
             >
               방 닫기
             </Button>
@@ -808,22 +849,22 @@ function RoomView({
               </article>
             ))}
           </div>
-          {hasNew && (
-            <Button
-              className="new-messages"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const el = scrollRef.current
-                if (el) el.scrollTop = el.scrollHeight
-                atBottom.current = true
-                setHasNew(false)
-              }}
-            >
-              <ArrowDown size={14} /> 새 메시지
-            </Button>
-          )}
           <div className="composer-area">
+            {hasNew && (
+              <Button
+                className="new-messages"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const el = scrollRef.current
+                  if (el) el.scrollTop = el.scrollHeight
+                  atBottom.current = true
+                  setHasNew(false)
+                }}
+              >
+                <ArrowDown size={14} /> 새 메시지
+              </Button>
+            )}
             <form
               className="composer"
               onSubmit={(event) => {
@@ -872,13 +913,21 @@ function RoomView({
               variant="ghost"
               size="sm"
               aria-label="빠른 문구 편집"
-              onClick={() => setEditingPresets(true)}
+              onClick={() => {
+                setPresetsSaved(false)
+                setEditingPresets(true)
+              }}
               disabled={!collection}
             >
               <Pencil size={15} /> 편집
             </Button>
           </div>
           <div className="preset-list">
+            {presetsSaved && (
+              <p className="presets-saved" role="status">
+                문구를 저장했습니다.
+              </p>
+            )}
             {presetsError ? (
               <div className="presets-empty" role="alert">
                 <p>{presetsError}</p>
@@ -902,6 +951,7 @@ function RoomView({
                   key={preset.id}
                   className="preset-button"
                   disabled={!connected || cooldown}
+                  data-cooldown={connected && cooldown}
                   translate="no"
                   onPointerDown={(event) => {
                     pointerStart.current = { x: event.clientX, y: event.clientY }
@@ -943,6 +993,7 @@ function RoomView({
           client={client}
           role={membership.role}
           onClose={() => setEditingPresets(false)}
+          onSaved={() => setPresetsSaved(true)}
         />
       )}
       {error && (
@@ -979,6 +1030,11 @@ function RoomView({
               ? '방을 유지하면 대화도 남습니다. 완전히 닫으면 모든 참여자가 나가고 대화가 삭제됩니다.'
               : '다시 입장하면 이전 대화를 볼 수 있어요. 방송실이 방을 닫으면 대화가 삭제됩니다.'}
         </p>
+        {dialogError && (
+          <p className="error-message" role="alert">
+            {dialogError}
+          </p>
+        )}
         <div
           className={`dialog-actions${dialog === 'leave' && membership.canClose ? ' dialog-actions-pair' : ''}`}
         >

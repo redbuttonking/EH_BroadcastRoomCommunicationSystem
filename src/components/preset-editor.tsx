@@ -48,6 +48,8 @@ export function PresetEditor({
   })
   const [imported, setImported] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [keyboardScroll, setKeyboardScroll] = useState(false)
+  const [draggingScroll, setDraggingScroll] = useState(false)
   const [pulse, setPulse] = useState<{ id: string; serial: number } | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
@@ -93,6 +95,7 @@ export function PresetEditor({
         onDismiss={requestClose}
       >
         <form
+          aria-busy={saving}
           onSubmit={async (event) => {
             event.preventDefault()
             if (savingRef.current || activeId) return
@@ -159,6 +162,14 @@ export function PresetEditor({
               type="scroll"
               scrollHideDelay={800}
               inert={saving}
+              onFocusCapture={(event) => {
+                if (event.target.matches(':focus-visible')) setKeyboardScroll(true)
+              }}
+              onKeyDownCapture={() => setKeyboardScroll(true)}
+              onPointerDownCapture={() => setKeyboardScroll(false)}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardScroll(false)
+              }}
             >
               <ScrollArea.Viewport
                 className="editor-viewport"
@@ -229,7 +240,16 @@ export function PresetEditor({
                   </Button>
                 </div>
               </ScrollArea.Viewport>
-              <ScrollArea.Scrollbar orientation="vertical" className="editor-scrollbar">
+              <ScrollArea.Scrollbar
+                forceMount
+                orientation="vertical"
+                className="editor-scrollbar"
+                data-pinned={keyboardScroll || draggingScroll}
+                onPointerDown={() => setDraggingScroll(true)}
+                onPointerUp={() => setDraggingScroll(false)}
+                onPointerCancel={() => setDraggingScroll(false)}
+                onLostPointerCapture={() => setDraggingScroll(false)}
+              >
                 <ScrollArea.Thumb className="editor-scroll-thumb" />
               </ScrollArea.Scrollbar>
             </ScrollArea.Root>

@@ -104,7 +104,9 @@ npm run test:firebase
 
 ## 작업 규칙
 
-- GitHub에 푸시하면 자동 검사를 실행한다. 실제 배포는 Actions의 ‘Deploy verified version’에서 main을 선택하고 deploy를 입력해 시작한다. 검사가 통과해야 배포한다. 배포 인증은 이 저장소의 main·수동 배포 작업으로 제한하며 장기 비밀 키를 저장하지 않는다.
+개발·테스트·화면 확인·GitHub 반영·수동 배포의 작업 기준은 [프로젝트 AGENTS.md](AGENTS.md)에 정리합니다. 기능·디자인·보안·커밋·운영의 세부 기준과 현재 구현값, 폐기한 기획·미정 사항은 [통합 규정·결정 기준](docs/project-standards.md)을 함께 확인합니다. 폰트·색상·버튼 크기·간격·반응형·상태별 상세 디자인은 [DESIGN.md](DESIGN.md)를 기준으로 작업합니다.
+
+- 자동 검사는 main 푸시·PR·워크플로 재사용 호출에서 실행한다. PR 없는 임시 브랜치 푸시만으로 항상 검사가 실행되는 것은 아니다. 실제 배포는 Actions의 ‘Deploy verified version’에서 main을 선택하고 deploy를 입력해 시작한다. 검사가 통과해야 배포한다. 배포 인증은 이 저장소의 main·수동 배포 작업으로 제한하며 장기 비밀 키를 저장하지 않는다.
 - 직접 배포에는 `npm run build:production`으로 실제 프로젝트 설정을 확인한다. 운영 설정 백업과 복구 순서는 [Firebase 연결 안내](docs/firebase-setup.md)의 마지막 항목을 참고한다.
 
 - 기본 브랜치는 `main`입니다. 변경은 임시 브랜치에서 PR로 올리고, 최신 main 기준 `verify` 검사를 통과한 뒤 합칩니다. 다른 사람의 승인은 필수가 아니며 병합한 원격 브랜치는 자동 삭제합니다.

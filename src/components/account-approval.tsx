@@ -99,7 +99,7 @@ export function ApprovalAdmin({ client, ownUid }: { client: RoomTransport; ownUi
             aria-pressed={filter === status}
             onClick={() => setFilter(status)}
           >
-            {STATUS_NAMES[status]}{' '}
+            <span>{STATUS_NAMES[status]}</span>
             <span>
               {applications.filter((item) => item.status === status && item.uid !== ownUid).length}
             </span>

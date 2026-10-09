@@ -201,6 +201,7 @@ test('preset drag and keyboard reorder preserve text, confirm movement and keep 
   await page.getByRole('button', { name: '빠른 문구 편집' }).click()
   const editor = page.getByRole('dialog', { name: '빠른 문구 편집' })
   const texts = editor.locator('textarea')
+  await expect(texts.first()).toBeVisible()
   const original = await texts.evaluateAll((nodes) =>
     nodes.map((node) => (node as HTMLTextAreaElement).value),
   )
@@ -258,6 +259,9 @@ test('preset drag and keyboard reorder preserve text, confirm movement and keep 
     footerY,
   )
   await page.screenshot({ path: `artifacts/preview/${info.project.name}-preset-editor.png` })
+  // A focused keyboard scroll region keeps its scroll affordance visible.
+  await expect(editor.locator('.editor-scrollbar')).toHaveAttribute('data-pinned', 'true')
+  await editor.getByRole('button', { name: '저장', exact: true }).focus()
   await expect(editor.locator('.editor-scrollbar')).not.toBeVisible({ timeout: 3000 })
   await expect(page.locator('.message-bubble')).toHaveCount(0)
   await editor.getByRole('button', { name: '저장', exact: true }).click()
@@ -406,6 +410,7 @@ test('duplicate broadcast is blocked, room events survive reentry, and another b
     await expect(other.locator('.room-event', { hasText: '예배인도자가 나갔습니다.' })).toHaveCount(
       1,
     )
+    await expect(page.locator('.account-summary')).toBeVisible()
     await joinRoom(page, code)
     await expect(page.locator('.room-event', { hasText: '예배인도자가 나갔습니다.' })).toHaveCount(
       1,
