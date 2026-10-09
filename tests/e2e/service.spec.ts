@@ -157,20 +157,26 @@ test('supported phones request landscape, while portrait tablets keep the room v
       await mobile.addInitScript(() => {
         const target = window as Window & { requestedDirections?: string[] }
         target.requestedDirections = []
-        Object.defineProperty(screen.orientation, 'lock', {
-          value: async (direction: string) => {
-            target.requestedDirections!.push(direction)
+        Object.defineProperty(screen, 'orientation', {
+          configurable: true,
+          value: {
+            lock: async (direction: string) => {
+              target.requestedDirections!.push(direction)
+            },
+            unlock: () => {},
           },
         })
       })
       await joinRoom(mobile, code)
       await expect(mobile.getByRole('heading', { name: /^대화 - / })).toBeVisible()
       await expect(mobile.locator('.rotate-guide')).not.toBeVisible()
-      expect(
-        await mobile.evaluate(
-          () => (window as Window & { requestedDirections?: string[] }).requestedDirections,
-        ),
-      ).toEqual(size.width === 740 ? ['landscape'] : [])
+      await expect
+        .poll(() =>
+          mobile.evaluate(
+            () => (window as Window & { requestedDirections?: string[] }).requestedDirections,
+          ),
+        )
+        .toEqual(size.width === 740 ? ['landscape'] : [])
       await mobile.getByRole('button', { name: '나가기', exact: true }).click()
       await mobile.getByRole('dialog').getByRole('button', { name: '나가기', exact: true }).click()
     } finally {
@@ -222,6 +228,7 @@ test('preset drag and keyboard reorder preserve text, confirm movement and keep 
   await page.keyboard.press('Space', { delay: 60 })
   await expect(editor.locator('.preset-drag-preview')).toBeVisible()
   await page.keyboard.press('ArrowDown', { delay: 60 })
+  await expect(page.getByText('2번째 위치입니다.', { exact: true })).toBeAttached()
   await page.keyboard.press('Escape', { delay: 60 })
   await expect(editor).toBeVisible()
   await expect(editor.locator('.preset-drag-preview')).toHaveCount(0)
@@ -230,6 +237,7 @@ test('preset drag and keyboard reorder preserve text, confirm movement and keep 
   await page.keyboard.press('Space', { delay: 60 })
   await expect(editor.locator('.preset-drag-preview')).toBeVisible()
   await page.keyboard.press('ArrowDown', { delay: 60 })
+  await expect(page.getByText('2번째 위치입니다.', { exact: true })).toBeAttached()
   await page.keyboard.press('Space', { delay: 60 })
   await expect(texts.nth(1)).toHaveValue(original[0])
   await editor.locator('.editor-viewport').hover()

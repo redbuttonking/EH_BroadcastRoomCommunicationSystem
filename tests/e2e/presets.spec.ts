@@ -38,6 +38,7 @@ test('account presets sync between separate devices, the home and room, and surv
     await expect(page.locator('.message-bubble')).toHaveText('다른 기기에서 바꾼 문구')
     await page.getByRole('button', { name: '방 닫기', exact: true }).click()
     await page.getByRole('dialog').getByRole('button', { name: '방 닫기', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '열려 있는 방', exact: true })).toBeVisible()
     await page.reload()
     editor = await edit(page)
     await expect(editor.getByLabel('문구 1 내용', { exact: true })).toHaveValue(

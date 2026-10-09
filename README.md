@@ -104,7 +104,7 @@ npm run test:firebase
 
 ## 작업 규칙
 
-- GitHub 자동 검사와 수동 실행 배포 워크플로를 준비했다. 배포용 클라우드 권한 연결과 공개 저장소 반영은 별도 확인이 필요하며, 아직 GitHub에서 실행을 검증하지 않았다.
+- GitHub에 푸시하면 자동 검사를 실행한다. 실제 배포는 Actions의 ‘Deploy verified version’에서 main을 선택하고 deploy를 입력해 시작한다. 검사가 통과해야 배포한다. 배포 인증은 이 저장소의 main·수동 배포 작업으로 제한하며 장기 비밀 키를 저장하지 않는다.
 - 직접 배포에는 `npm run build:production`으로 실제 프로젝트 설정을 확인한다. 운영 설정 백업과 복구 순서는 [Firebase 연결 안내](docs/firebase-setup.md)의 마지막 항목을 참고한다.
 
 - 기본 브랜치는 `main`입니다.
