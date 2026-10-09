@@ -14,6 +14,7 @@ export type ClientState = {
     role: Role | null
     approval: ApprovalStatus
     isAdmin: boolean
+    emailVerified: boolean
   } | null
   profileReady: boolean
   profileError: string
@@ -28,6 +29,8 @@ export type ClientState = {
   membership: Membership | null
   pending: PendingMessage[]
   notice: string
+  hasEarlier: boolean
+  loadingEarlier: boolean
 }
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type AccountApplication = {
@@ -36,8 +39,13 @@ export type AccountApplication = {
   role: Role
   createdAt: number
   status: ApprovalStatus
+  emailVerified: boolean
 }
 export interface RoomTransport {
+  sendVerification: () => Promise<void>
+  refreshVerification: () => Promise<void>
+  loadEarlier: () => Promise<void>
+  closeUnusedRoom: (code: string) => Promise<void>
   watchPresets: (
     role: Role,
     onChange: (collection: PresetCollection) => void,

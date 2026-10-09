@@ -60,7 +60,7 @@ function AccountForm({ mode, client, email, setEmail, changeMode }: FormProps & 
         <h2>{title}</h2>
         <p>
           {signup
-            ? '교회 내부 서비스입니다. 가입 후 관리자 승인을 받아 이용하세요.'
+            ? '교회 내부 서비스입니다. 이메일 인증 후 관리자 승인을 받아 이용하세요.'
             : reset
               ? '가입한 이메일로 재설정 안내를 보내드립니다.'
               : '사용하던 계정으로 대화를 시작하세요.'}

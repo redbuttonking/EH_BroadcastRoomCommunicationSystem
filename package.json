@@ -14,7 +14,9 @@
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:webkit": "playwright test --project=webkit",
     "format:check": "prettier --check src scripts tests *.ts *.json",
-    "test:firebase": "firebase emulators:exec --project demo-eh-broadcast --only database \"vitest run --config vitest.firebase.config.ts\""
+    "test:firebase": "firebase emulators:exec --project demo-eh-broadcast --only database \"vitest run --config vitest.firebase.config.ts\"",
+    "build:production": "node scripts/build-production.mjs",
+    "backup:settings": "node scripts/backup-settings.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -49,6 +51,7 @@
     "vitest": "^5.0.3"
   },
   "overrides": {
-    "@grpc/grpc-js": "^1.13.6"
+    "@grpc/grpc-js": "^1.13.6",
+    "basic-ftp": "6.2.3"
   }
 }

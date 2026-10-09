@@ -125,13 +125,14 @@ export function ApprovalAdmin({ client, ownUid }: { client: RoomTransport; ownUi
                 <span>
                   {ROLE_NAMES[application.role]} ·{' '}
                   {new Date(application.createdAt).toLocaleDateString('ko-KR')}
+                  {!application.emailVerified && ' · 이메일 미인증'}
                 </span>
               </div>
               <div className="approval-actions">
                 {application.status !== 'approved' && (
                   <Button
                     size="sm"
-                    disabled={busy}
+                    disabled={busy || !application.emailVerified}
                     onClick={() => {
                       setError('')
                       setReview({ application, status: 'approved' })

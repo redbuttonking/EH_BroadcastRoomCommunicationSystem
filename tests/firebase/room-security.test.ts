@@ -11,6 +11,7 @@ let env: RulesTestEnvironment
 const account = (uid: string) =>
   env.authenticatedContext(uid, {
     email: `${uid}@example.invalid`,
+    email_verified: true,
     firebase: { sign_in_provider: 'password' },
   })
 const id = 'room-00000000-0000-0000-0001'
@@ -21,12 +22,27 @@ const salt = 'a'.repeat(32)
 const timestamp = { '.sv': 'timestamp' }
 const create = {
   [`rooms/${id}`]: {
-    meta: { owner: 'owner', code, name, createdAt: timestamp, salt, verifier: proof },
+    meta: {
+      owner: 'owner',
+      ownerSlot: '0',
+      code,
+      name,
+      createdAt: timestamp,
+      salt,
+      verifier: proof,
+    },
     members: { owner: { role: 'broadcast', proof } },
   },
   [`directory/${code}`]: { id, code, name, createdAt: timestamp, salt },
+  'ownedRooms/owner/0': id,
 }
-const close = { [`rooms/${id}`]: null, [`directory/${code}`]: null }
+const close = { [`rooms/${id}`]: null, [`directory/${code}`]: null, 'ownedRooms/owner/0': null }
+function messageWrite(message: { id: string; uid: string; [key: string]: unknown }) {
+  return {
+    [`rooms/${id}/messages/${message.id}`]: message,
+    [`rooms/${id}/sending/${message.uid}`]: { sentAt: timestamp, messageId: message.id },
+  }
+}
 function admission(uid: string, role: string, connectionId = `${uid}-connection-0001`) {
   return {
     [`rooms/${id}/connections/${uid}/${connectionId}`]: { role },
@@ -78,6 +94,7 @@ beforeEach(async () => {
             ? 'broadcast'
             : 'leader',
           createdAt: timestamp,
+          emailVerified: true,
           email: `${uid}@example.invalid`,
         },
       ]),
@@ -95,6 +112,7 @@ beforeEach(async () => {
         ),
       )
     await context.database().ref('administrators/admin').set(true)
+    await context.database().ref('access/admin').set({ status: 'approved' })
   })
   await account('owner').database().ref().update(create)
   await account('owner').database().ref().update(admission('owner', 'broadcast'))
@@ -185,9 +203,12 @@ test('an account can set its role once and cannot read or replace another profil
   const newcomer = account('new-account').database()
   await assertFails(newcomer.ref('directory').get())
   await assertSucceeds(
-    newcomer
-      .ref('profiles/new-account')
-      .set({ role: 'leader', email: 'new-account@example.invalid', createdAt: timestamp }),
+    newcomer.ref('profiles/new-account').set({
+      role: 'leader',
+      email: 'new-account@example.invalid',
+      emailVerified: true,
+      createdAt: timestamp,
+    }),
   )
   await assertFails(newcomer.ref('directory').get())
   await assertSucceeds(
@@ -266,20 +287,23 @@ test.each([null, 'broadcast', 'leader'])(
     await assertFails(
       admin.ref(`rooms/${id}/messages/${message.id}`).set({ ...message, role: 'broadcast' }),
     )
-    await assertSucceeds(admin.ref(`rooms/${id}/messages/${message.id}`).set(message))
+    await assertSucceeds(admin.ref().update(messageWrite(message)))
     await assertSucceeds(admin.ref().update(departure('admin', 'leader')))
     await account('owner').database().ref().update(departure('owner', 'broadcast'))
     await assertSucceeds(admin.ref(`rooms/${id}/members/admin`).set({ role: 'broadcast', proof }))
     await assertSucceeds(
       admin.ref().update(admission('admin', 'broadcast', 'admin-connection-0002')),
     )
+    await new Promise((resolve) => setTimeout(resolve, 510))
     await assertSucceeds(
-      admin.ref(`rooms/${id}/messages/admin-message-0002`).set({
-        ...message,
-        id: 'admin-message-0002',
-        role: 'broadcast',
-        connectionId: 'admin-connection-0002',
-      }),
+      admin.ref().update(
+        messageWrite({
+          ...message,
+          id: 'admin-message-0002',
+          role: 'broadcast',
+          connectionId: 'admin-connection-0002',
+        }),
+      ),
     )
     await assertFails(admin.ref().update(close))
     await assertSucceeds(
@@ -302,7 +326,8 @@ test.each([null, 'leader'])(
     const admin = account('admin').database()
     await assertSucceeds(
       admin.ref().update({
-        ...create,
+        [`directory/${code}`]: create[`directory/${code}`],
+        'ownedRooms/admin/0': id,
         [`rooms/${id}`]: {
           ...create[`rooms/${id}`],
           meta: { ...create[`rooms/${id}`].meta, owner: 'admin' },
@@ -318,8 +343,12 @@ test.each([null, 'leader'])(
         .update(departure('admin', 'broadcast', undefined, 'disconnected')),
     )
     await assertSucceeds(admin.ref().onDisconnect().cancel())
-    await assertSucceeds(admin.ref().update(close))
-    expect((await admin.ref(`rooms/${id}`).get()).val()).toBeNull()
+    await assertSucceeds(
+      admin
+        .ref()
+        .update({ [`rooms/${id}`]: null, [`directory/${code}`]: null, 'ownedRooms/admin/0': null }),
+    )
+    expect((await admin.ref(`rooms/${id}/meta`).get()).val()).toBeNull()
   },
 )
 
@@ -343,6 +372,10 @@ test('removing administrator permission restores fixed-role restrictions and sti
       sentAt: timestamp,
       connectionId: 'admin-connection-0001',
     }),
+  )
+  await assertFails(admin.ref(`rooms/${id}/messages`).orderByChild('sentAt').limitToLast(100).get())
+  await assertFails(
+    admin.ref(`rooms/${id}/events`).orderByChild('joined/sentAt').limitToLast(100).get(),
   )
   await assertFails(admin.ref(`rooms/${id}/members/admin`).set({ role: 'leader', proof }))
   await assertSucceeds(admin.ref().update(departure('admin', 'leader')))
@@ -442,7 +475,7 @@ test('listing has no verifier and outsiders cannot read chat or join with a wron
 test('correct password admits a leader; identities, messages and metadata cannot be forged', async () => {
   const leader = account('leader').database()
   await assertSucceeds(leader.ref(`rooms/${id}/members/leader`).set({ role: 'leader', proof }))
-  await assertSucceeds(leader.ref(`rooms/${id}`).get())
+  await assertSucceeds(leader.ref(`rooms/${id}/meta`).get())
   await assertSucceeds(leader.ref().update(admission('leader', 'leader')))
   const message = {
     id: 'message-0001',
@@ -452,7 +485,7 @@ test('correct password admits a leader; identities, messages and metadata cannot
     sentAt: timestamp,
     connectionId: 'leader-connection-0001',
   }
-  await assertSucceeds(leader.ref(`rooms/${id}/messages/message-0001`).set(message))
+  await assertSucceeds(leader.ref().update(messageWrite(message)))
   await assertFails(
     leader
       .ref(`rooms/${id}/messages/message-0002`)
@@ -469,7 +502,7 @@ test('closing requires a complete atomic deletion; late messages cannot recreate
   await assertFails(owner.ref(`directory/${code}`).remove())
   await assertSucceeds(owner.ref().update(close))
   expect((await owner.ref('directory').get()).val()).toBeNull()
-  expect((await owner.ref(`rooms/${id}`).get()).val()).toBeNull()
+  expect((await owner.ref(`rooms/${id}/meta`).get()).val()).toBeNull()
   await assertFails(
     owner.ref(`rooms/${id}/messages/message-late`).set({
       id: 'message-late',
@@ -518,7 +551,7 @@ test('another broadcast cannot close a retained room; its creator can reenter an
   const owner = account('owner').database()
   await assertSucceeds(owner.ref().update(admission('owner', 'broadcast', 'owner-returning-0002')))
   await assertSucceeds(owner.ref().update(close))
-  expect((await returningBroadcast.ref(`rooms/${id}`).get()).val()).toBeNull()
+  expect((await returningBroadcast.ref(`rooms/${id}/meta`).get()).val()).toBeNull()
 })
 
 test('disconnect removes only presence and preserves a room without any remaining connections', async () => {
@@ -558,7 +591,10 @@ test('simultaneous admissions to a role allow exactly one connection, including 
     second.ref().update(admission('leader-b', 'leader')),
   ])
   expect(result.filter((item) => item.status === 'fulfilled')).toHaveLength(1)
-  const room = (await first.ref(`rooms/${id}`).get()).val()
+  const room = {
+    seats: (await first.ref(`rooms/${id}/seats`).get()).val(),
+    connections: (await first.ref(`rooms/${id}/connections`).get()).val(),
+  }
   const winner = room.seats.leader.uid as string
   const db = winner === 'leader-a' ? first : second
   await assertFails(db.ref().update(admission(winner, 'leader', 'another-tab-0001')))
@@ -646,9 +682,12 @@ test('pending and rejected accounts cannot use rooms or approve themselves, even
       .set({ role: 'leader', email: 'owner@example.invalid', createdAt: timestamp }),
   )
   await assertSucceeds(
-    db
-      .ref('profiles/applicant')
-      .set({ role: 'leader', email: 'applicant@example.invalid', createdAt: timestamp }),
+    db.ref('profiles/applicant').set({
+      role: 'leader',
+      email: 'applicant@example.invalid',
+      emailVerified: true,
+      createdAt: timestamp,
+    }),
   )
   await assertSucceeds(db.ref('profiles/applicant').get())
   await assertSucceeds(db.ref('access/applicant').get())
@@ -707,7 +746,7 @@ test('pending and rejected accounts cannot use rooms or approve themselves, even
   await assertSucceeds(db.ref('directory').get())
   await assertSucceeds(db.ref(`rooms/${id}/members/applicant`).set({ role: 'leader', proof }))
   await assertSucceeds(db.ref().update(admission('applicant', 'leader')))
-  await assertSucceeds(db.ref(`rooms/${id}`).get())
+  await assertSucceeds(db.ref(`rooms/${id}/messages`).orderByChild('sentAt').limitToLast(100).get())
 })
 
 test('revoking approval blocks existing members immediately while their disconnect cleanup remains allowed', async () => {
@@ -773,4 +812,129 @@ test('legacy profiles can add only their own email without changing role, date o
       .ref('access/admin')
       .set({ status: 'rejected', reviewedAt: timestamp, reviewedBy: 'admin' }),
   )
+})
+
+test('unverified accounts cannot use rooms or attest email ownership, and cannot be approved', async () => {
+  const db = env
+    .authenticatedContext('unverified', {
+      email: 'unverified@example.invalid',
+      email_verified: false,
+      firebase: { sign_in_provider: 'password' },
+    })
+    .database()
+  await assertSucceeds(
+    db.ref('profiles/unverified').set({
+      role: 'leader',
+      email: 'unverified@example.invalid',
+      createdAt: timestamp,
+      emailVerified: false,
+    }),
+  )
+  await assertFails(db.ref('profiles/unverified/emailVerified').set(true))
+  await assertFails(
+    account('admin')
+      .database()
+      .ref('access/unverified')
+      .set({ status: 'approved', reviewedAt: timestamp, reviewedBy: 'admin' }),
+  )
+  await env.withSecurityRulesDisabled((context) =>
+    context.database().ref('access/unverified').set({ status: 'approved' }),
+  )
+  await assertFails(db.ref('directory').get())
+  await assertFails(db.ref(`rooms/${id}/members/unverified`).set({ role: 'leader', proof }))
+  const verified = account('unverified').database()
+  await assertSucceeds(verified.ref('profiles/unverified/emailVerified').set(true))
+  await assertSucceeds(verified.ref('directory').get())
+})
+
+test('only active participants can read messages, including direct reads and bounded queries', async () => {
+  const owner = account('owner').database(),
+    visitor = account('other-broadcast').database()
+  const message = {
+    id: 'private-message-0001',
+    uid: 'owner',
+    role: 'broadcast',
+    text: 'private',
+    sentAt: timestamp,
+    connectionId: 'owner-connection-0001',
+  }
+  await owner.ref().update(messageWrite(message))
+  await visitor.ref(`rooms/${id}/members/other-broadcast`).set({ role: 'broadcast', proof })
+  await assertFails(visitor.ref().update(admission('other-broadcast', 'broadcast')))
+  const chat = (db: typeof owner) =>
+    db.ref(`rooms/${id}/messages`).orderByChild('sentAt').limitToLast(100)
+  await assertFails(chat(visitor).get())
+  await assertFails(visitor.ref(`rooms/${id}/messages/${message.id}`).get())
+  await assertFails(chat(account('admin').database()).get())
+  await assertSucceeds(chat(owner).get())
+  await assertFails(owner.ref(`rooms/${id}`).get())
+  await assertFails(owner.ref(`rooms/${id}/messages`).get())
+  await assertFails(owner.ref(`rooms/${id}/messages`).orderByChild('sentAt').limitToLast(101).get())
+  await owner.ref().update(departure('owner', 'broadcast'))
+  await assertFails(chat(owner).get())
+  await assertFails(owner.ref(`rooms/${id}/messages/${message.id}`).get())
+  await owner.ref().update(admission('owner', 'broadcast', 'owner-return-0002'))
+  await assertSucceeds(chat(owner).get())
+})
+
+test('server limits three owned rooms and frees a slot only with atomic room deletion', async () => {
+  const owner = account('owner').database()
+  const next = (slot: string, suffix = slot) => {
+    const nextId = `room-cap-00000000-0000-000${suffix}`,
+      nextCode = `00990${suffix}`
+    return {
+      [`rooms/${nextId}`]: {
+        meta: {
+          owner: 'owner',
+          ownerSlot: slot,
+          code: nextCode,
+          name,
+          createdAt: timestamp,
+          salt,
+          verifier: proof,
+        },
+        members: { owner: { role: 'broadcast', proof } },
+      },
+      [`directory/${nextCode}`]: { id: nextId, code: nextCode, name, createdAt: timestamp, salt },
+      [`ownedRooms/owner/${slot}`]: nextId,
+    }
+  }
+  await assertSucceeds(owner.ref().update(next('1')))
+  await assertSucceeds(owner.ref().update(next('2')))
+  await assertFails(owner.ref().update(next('3')))
+  await assertFails(owner.ref('ownedRooms/owner/0').remove())
+  await assertSucceeds(owner.ref().update(close))
+  await assertSucceeds(owner.ref().update(next('0', '4')))
+})
+
+test('administrator cleanup cannot delete an active room but can remove a revoked owners empty room', async () => {
+  const admin = account('admin').database(),
+    owner = account('owner').database()
+  await assertFails(admin.ref().update(close))
+  await owner.ref().update(departure('owner', 'broadcast'))
+  await admin
+    .ref('access/owner')
+    .set({ status: 'rejected', reviewedBy: 'admin', reviewedAt: timestamp })
+  await assertFails(account('other-broadcast').database().ref().update(close))
+  await assertSucceeds(admin.ref().update(close))
+  expect((await admin.ref(`rooms/${id}/meta`).get()).exists()).toBe(false)
+  expect((await admin.ref('ownedRooms/owner').get()).exists()).toBe(false)
+})
+
+test('message limits and identity checks cannot be bypassed by direct writes', async () => {
+  const owner = account('owner').database()
+  const message = {
+    id: 'limited-message-0001',
+    uid: 'owner',
+    role: 'broadcast',
+    text: 'test',
+    sentAt: timestamp,
+    connectionId: 'owner-connection-0001',
+  }
+  await assertFails(owner.ref().update(messageWrite({ ...message, role: 'leader' })))
+  await assertSucceeds(owner.ref().update(messageWrite(message)))
+  await assertFails(owner.ref().update(messageWrite({ ...message, id: 'limited-message-0002' })))
+  await assertFails(owner.ref(`rooms/${id}/sending/owner`).remove())
+  await new Promise((resolve) => setTimeout(resolve, 510))
+  await assertSucceeds(owner.ref().update(messageWrite({ ...message, id: 'limited-message-0002' })))
 })

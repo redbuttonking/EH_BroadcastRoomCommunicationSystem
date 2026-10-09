@@ -39,4 +39,6 @@ test-results/
 # Locally generated visual verification screenshots
 /artifacts/preview/
 .firebase/
+.backups/
+gha-creds-*.json
 *.tsbuildinfo

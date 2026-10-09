@@ -9,10 +9,12 @@ test('retrying an interrupted typed message uses the original message ID', async
   const writes: string[] = []
   let failNext = true
   await page.route(
-    (url) => url.pathname.includes('/messages/'),
+    (url) => url.pathname === '/.json',
     async (route) => {
-      if (route.request().method() === 'PUT') {
-        writes.push(new URL(route.request().url()).pathname)
+      const payload = route.request().postDataJSON() || {}
+      const messagePath = Object.keys(payload).find((key) => key.includes('/messages/'))
+      if (route.request().method() === 'PATCH' && messagePath) {
+        writes.push(messagePath)
         if (failNext) {
           failNext = false
           await route.abort()
@@ -26,6 +28,7 @@ test('retrying an interrupted typed message uses the original message ID', async
   await input.fill('전송 중 연결 오류 시험')
   await input.press('Enter')
   await expect(page.getByRole('button', { name: '다시 전송' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '메시지 보내기', exact: true })).toBeEnabled()
   await input.press('Enter')
   await expect(page.locator('.message:not(.pending-message) .message-bubble')).toHaveCount(1)
   await expect(page.locator('.pending-message')).toHaveCount(0)

@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sun,
+  Trash2,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -52,6 +53,8 @@ import {
 import { InstallApp } from '@/components/install-app'
 import { FullscreenToggle } from '@/components/fullscreen-toggle'
 import { AuthPanel } from '@/components/auth-panel'
+import { EmailVerification } from '@/components/email-verification'
+import { ScreenAwake } from '@/components/screen-awake'
 import { AccountRoleFields, AccountRoleSetup } from '@/components/account-role'
 import { AccountApproval, ApprovalAdmin } from '@/components/account-approval'
 import { useRoomOrientation } from '@/lib/orientation'
@@ -144,7 +147,8 @@ export function App({ client, preview = false }: Props & { preview?: boolean }) 
             </Button>
           </div>
         )}
-        {state.account?.approval === 'approved' &&
+        {state.account?.emailVerified &&
+        state.account.approval === 'approved' &&
         state.accessReady &&
         state.room &&
         state.membership ? (
@@ -185,6 +189,8 @@ function Lobby({ client }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [showRooms, setShowRooms] = useState(true)
+  const [cleanupCode, setCleanupCode] = useState<string | null>(null)
+  const [cleanupError, setCleanupError] = useState('')
   const managing = !!state.account?.isAdmin && !showRooms
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -208,7 +214,7 @@ function Lobby({ client }: Props) {
         <Brand />
         <div className="lobby-actions">
           <ThemeToggle />
-          {state.account?.isAdmin && state.accessReady && (
+          {state.account?.isAdmin && state.account.emailVerified && state.accessReady && (
             <Button
               className="admin-page-switch"
               variant="outline"
@@ -292,6 +298,8 @@ function Lobby({ client }: Props) {
           )}
           {!state.account ? (
             <AuthPanel client={client} state={state} />
+          ) : !state.account.emailVerified ? (
+            <EmailVerification client={client} />
           ) : !state.accessReady ||
             !state.profileReady ||
             state.accessError ||
@@ -325,23 +333,38 @@ function Lobby({ client }: Props) {
                   ) : (
                     <div className="room-list">
                       {state.rooms.map((room) => (
-                        <button
-                          key={room.code}
-                          className="room-option"
-                          data-room-code={room.code}
-                          onClick={() => {
-                            setCode(room.code)
-                            setJoinRole(null)
-                            setPassword('')
-                            setError('')
-                          }}
-                        >
-                          <span>
-                            <span className="room-option-label">대화방</span>
-                            <span className="room-option-name">{room.name}</span>
-                          </span>
-                          <ChevronRight size={18} />
-                        </button>
+                        <div className="room-option-wrap" key={room.code}>
+                          <button
+                            key={room.code}
+                            className="room-option"
+                            data-room-code={room.code}
+                            onClick={() => {
+                              setCode(room.code)
+                              setJoinRole(null)
+                              setPassword('')
+                              setError('')
+                            }}
+                          >
+                            <span>
+                              <span className="room-option-label">대화방</span>
+                              <span className="room-option-name">{room.name}</span>
+                            </span>
+                            <ChevronRight size={18} />
+                          </button>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`${room.name} 정리`}
+                              onClick={() => {
+                                setCleanupCode(room.code)
+                                setCleanupError('')
+                              }}
+                            >
+                              <Trash2 size={17} />
+                            </Button>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
@@ -467,6 +490,47 @@ function Lobby({ client }: Props) {
           )}
         </section>
       </main>
+      <Modal
+        open={!!cleanupCode}
+        onDismiss={() => setCleanupCode(null)}
+        titleId="cleanup-title"
+        disabled={busy}
+      >
+        <ModalHeader
+          title="사용하지 않는 방을 정리할까요?"
+          titleId="cleanup-title"
+          onDismiss={() => setCleanupCode(null)}
+          disabled={busy}
+        />
+        <p>{state.rooms.find((room) => room.code === cleanupCode)?.name}</p>
+        <p>참여자가 없는 방만 정리할 수 있습니다. 방과 대화는 삭제되며 복구할 수 없습니다.</p>
+        {cleanupError && (
+          <p className="error-message" role="alert">
+            {cleanupError}
+          </p>
+        )}
+        <div className="dialog-actions">
+          <Button
+            variant="destructive"
+            disabled={busy}
+            onClick={async () => {
+              if (!cleanupCode || busy) return
+              setBusy(true)
+              setCleanupError('')
+              try {
+                await client.closeUnusedRoom(cleanupCode)
+                setCleanupCode(null)
+              } catch (reason) {
+                setCleanupError(reason instanceof Error ? reason.message : '정리하지 못했습니다.')
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            방과 대화 삭제
+          </Button>
+        </div>
+      </Modal>
       <footer className="lobby-footer">
         <span>© {new Date().getFullYear()} 은혜장로교회. All rights reserved.</span>
         <address>
@@ -500,6 +564,9 @@ function RoomView({
   const [dialog, setDialog] = useState<'close' | 'leave' | null>(null)
   const [busy, setBusy] = useState(false)
   const [hasNew, setHasNew] = useState(false)
+  const [cooldown, setCooldown] = useState(false)
+  const cooldownTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(cooldownTimer.current), [])
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottom = useRef(true)
   const composeRef = useRef<HTMLTextAreaElement>(null)
@@ -526,17 +593,21 @@ function RoomView({
   })
   const send = async (text: string, retryId?: string) => {
     setError('')
+    setCooldown(true)
+    window.clearTimeout(cooldownTimer.current)
     try {
       await client.sendMessage(text, retryId)
       return true
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '전송하지 못했습니다.')
       return false
+    } finally {
+      cooldownTimer.current = window.setTimeout(() => setCooldown(false), 550)
     }
   }
   const sendDraft = async () => {
     const submitted = draftRef.current
-    if (!submitted.trim() || !connected || busy) return
+    if (!submitted.trim() || !connected || busy || cooldown) return
     if (draftAttempt.current?.text !== submitted)
       draftAttempt.current = { text: submitted, id: crypto.randomUUID() }
     setBusy(true)
@@ -574,6 +645,7 @@ function RoomView({
         </div>
         <div className="room-toolbar">
           <FullscreenToggle />
+          <ScreenAwake />
           <ThemeToggle />
           <div className="font-control" role="group" aria-label="대화와 버튼 글자 크기">
             <span>글자</span>
@@ -648,6 +720,31 @@ function RoomView({
             tabIndex={0}
             aria-label="대화 내용"
           >
+            {state.hasEarlier && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="history-more"
+                disabled={!connected || state.loadingEarlier}
+                onClick={async () => {
+                  const element = scrollRef.current
+                  if (!element) return
+                  const height = element.scrollHeight,
+                    top = element.scrollTop
+                  atBottom.current = false
+                  try {
+                    await client.loadEarlier()
+                    requestAnimationFrame(() => {
+                      element.scrollTop = top + element.scrollHeight - height
+                    })
+                  } catch {
+                    setError('이전 대화를 불러오지 못했습니다. 연결 후 다시 시도해 주세요.')
+                  }
+                }}
+              >
+                {state.loadingEarlier ? '불러오고 있습니다…' : '이전 대화 보기'}
+              </Button>
+            )}
             <div className="chat-start">
               <LockKeyhole size={13} />
               <span>이 방이 열려 있는 동안만 대화가 남습니다.</span>
@@ -761,7 +858,7 @@ function RoomView({
                 type="submit"
                 size="icon"
                 aria-label="메시지 보내기"
-                disabled={!connected || !draft.trim() || busy}
+                disabled={!connected || !draft.trim() || busy || cooldown}
               >
                 <Send size={19} />
               </Button>
@@ -804,7 +901,7 @@ function RoomView({
                 <button
                   key={preset.id}
                   className="preset-button"
-                  disabled={!connected}
+                  disabled={!connected || cooldown}
                   translate="no"
                   onPointerDown={(event) => {
                     pointerStart.current = { x: event.clientX, y: event.clientY }

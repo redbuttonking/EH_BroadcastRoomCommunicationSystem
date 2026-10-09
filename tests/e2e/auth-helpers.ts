@@ -10,6 +10,7 @@ export async function signUp(
   password = ACCOUNT_PASSWORD,
   role = '방송실',
   approve = true,
+  verify = true,
 ) {
   await expect(page.getByRole('heading', { name: '로그인', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '회원가입', exact: true }).click()
@@ -23,6 +24,11 @@ export async function signUp(
   await page.getByRole('button', { name: '가입 신청하기' }).click()
   const { localId: uid } = await (await signedUp).json()
   await expect(page.locator('.account-summary')).toContainText(email)
+  if (!verify) {
+    await expect(page.getByRole('heading', { name: '이메일 인증이 필요합니다' })).toBeVisible()
+    return email
+  }
+  await verifyEmail(page, email)
   await expect(page.getByRole('heading', { name: '관리자 승인을 기다리고 있어요' })).toBeVisible()
   if (approve) {
     await seedApproval(uid)
@@ -68,6 +74,36 @@ export async function signIn(page: Page, email: string, password = ACCOUNT_PASSW
   await page.getByLabel('비밀번호', { exact: true }).fill(password)
   await page.getByRole('button', { name: '로그인', exact: true }).click()
   await expect(page.locator('.account-summary')).toContainText(email)
+  if (await page.getByRole('heading', { name: '이메일 인증이 필요합니다' }).isVisible())
+    await verifyEmail(page, email)
+}
+
+export async function verifyEmail(page: Page, email: string) {
+  await expect(page.getByRole('heading', { name: '이메일 인증이 필요합니다' })).toBeVisible()
+  await page.getByRole('button', { name: '인증 메일 보내기', exact: true }).click()
+  await expect(page.getByText('인증 메일을 보냈습니다.', { exact: false })).toBeVisible()
+  const response = await fetch(
+    'http://127.0.0.1:9099/emulator/v1/projects/demo-eh-broadcast/oobCodes',
+  )
+  const { oobCodes } = await response.json()
+  const code = oobCodes
+    .filter(
+      (item: { email: string; requestType: string }) =>
+        item.email === email && item.requestType === 'VERIFY_EMAIL',
+    )
+    .at(-1)
+  if (!code) throw new Error('Verification code missing in local emulator')
+  const verified = await fetch(
+    'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:update?key=demo-key',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oobCode: code.oobCode }),
+    },
+  )
+  if (!verified.ok) throw new Error('Local verification failed')
+  await page.getByRole('button', { name: '인증 완료 확인', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '이메일 인증이 필요합니다' })).toHaveCount(0)
 }
 
 export async function ensureSignedIn(page: Page, role = '방송실') {

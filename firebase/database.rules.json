@@ -3,9 +3,9 @@
     ".read": false,
     ".write": false,
     "directory": {
-      ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && root.child('access').child(auth.uid).child('status').val() == 'approved'",
+      ".read": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
       "$code": {
-        ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && ((!data.exists() && newData.exists() && newData.parent().parent().child('rooms').child(newData.child('id').val()).child('meta/owner').val() == auth.uid) || (data.exists() && !newData.exists() && root.child('rooms').child(data.child('id').val()).child('meta/owner').val() == auth.uid && root.child('rooms').child(data.child('id').val()).child('members').child(auth.uid).child('role').val() == 'broadcast' && !newData.parent().parent().child('rooms').child(data.child('id').val()).exists())) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
+        ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && ((!data.exists() && newData.exists() && newData.parent().parent().child('rooms').child(newData.child('id').val()).child('meta/owner').val() == auth.uid) || (data.exists() && !newData.exists() && (root.child('rooms').child(data.child('id').val()).child('meta/owner').val() == auth.uid && root.child('rooms').child(data.child('id').val()).child('members').child(auth.uid).child('role').val() == 'broadcast' || (root.child('administrators').child(auth.uid).val() == true && !root.child('rooms').child(data.child('id').val()).child('connections').exists())) && !newData.parent().parent().child('rooms').child(data.child('id').val()).exists())) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
         ".validate": "newData.hasChildren(['id', 'code', 'name', 'createdAt', 'salt']) && $code.matches(/^[0-9]{6}$/) && newData.child('code').val() == $code && newData.child('id').isString() && newData.child('createdAt').val() == newData.parent().parent().child('rooms').child(newData.child('id').val()).child('meta/createdAt').val() && newData.child('salt').val() == newData.parent().parent().child('rooms').child(newData.child('id').val()).child('meta/salt').val() && newData.parent().parent().child('rooms').child(newData.child('id').val()).child('meta/code').val() == $code && newData.child('name').val() == newData.parent().parent().child('rooms').child(newData.child('id').val()).child('meta/name').val()",
         "id": {},
         "code": {},
@@ -19,8 +19,7 @@
     },
     "rooms": {
       "$id": {
-        ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && root.child('access').child(auth.uid).child('status').val() == 'approved' && (!data.exists() || data.child('members').child(auth.uid).exists())",
-        ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == 'broadcast') && ((!data.exists() && newData.child('meta/owner').val() == auth.uid && newData.child('members').child(auth.uid).child('role').val() == 'broadcast' && !newData.child('messages').exists() && !newData.child('connections').exists() && !newData.child('seats').exists() && !newData.child('events').exists() && newData.parent().parent().child('directory').child(newData.child('meta/code').val()).child('id').val() == $id) || (data.exists() && !newData.exists() && data.child('meta/owner').val() == auth.uid && data.child('members').child(auth.uid).child('role').val() == 'broadcast' && root.child('rooms').child($id).child('seats/broadcast/uid').val() == auth.uid && root.child('rooms').child($id).child('connections').child(auth.uid).child(root.child('rooms').child($id).child('seats/broadcast/connectionId').val()).exists() && !newData.parent().parent().child('directory').child(data.child('meta/code').val()).exists())) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
+        ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == 'broadcast') && ((!data.exists() && newData.child('meta/ownerSlot').exists() && newData.child('meta/owner').val() == auth.uid && newData.child('members').child(auth.uid).child('role').val() == 'broadcast' && !newData.child('messages').exists() && !newData.child('connections').exists() && !newData.child('seats').exists() && !newData.child('events').exists() && newData.parent().parent().child('directory').child(newData.child('meta/code').val()).child('id').val() == $id) || (data.exists() && !newData.exists() && (!data.child('meta/ownerSlot').exists() || !newData.parent().parent().child('ownedRooms').child(data.child('meta/owner').val()).child(data.child('meta/ownerSlot').val()).exists()) && (data.child('meta/owner').val() == auth.uid && data.child('members').child(auth.uid).child('role').val() == 'broadcast' && root.child('rooms').child($id).child('seats/broadcast/uid').val() == auth.uid && root.child('rooms').child($id).child('connections').child(auth.uid).child(root.child('rooms').child($id).child('seats/broadcast/connectionId').val()).exists() || (root.child('administrators').child(auth.uid).val() == true && !data.child('connections').exists())) && !newData.parent().parent().child('directory').child(data.child('meta/code').val()).exists())) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
         ".validate": "newData.hasChildren(['meta', 'members']) && $id.matches(/^[a-zA-Z0-9-]{20,64}$/)",
         "meta": {
           ".validate": "newData.hasChildren(['owner','code','name','createdAt','salt','verifier']) && newData.child('owner').val() == auth.uid && newData.child('code').isString() && newData.child('code').val().matches(/^[0-9]{6}$/) && newData.child('createdAt').val() == now && newData.child('salt').isString() && newData.child('salt').val().matches(/^[a-f0-9]{32}$/) && newData.child('verifier').isString() && newData.child('verifier').val().matches(/^[a-f0-9]{64}$/) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 40",
@@ -32,35 +31,41 @@
           "$other": {
             ".validate": false
           },
-          "name": {}
+          "name": {},
+          ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && (!data.exists() || root.child('rooms').child($id).child('members').child(auth.uid).exists() || root.child('administrators').child(auth.uid).val() == true)",
+          "ownerSlot": {
+            ".validate": "newData.isString() && newData.val().matches(/^[0-2]$/) && newData.parent().parent().parent().parent().child('ownedRooms').child(auth.uid).child(newData.val()).val() == $id"
+          }
         },
         "members": {
           "$uid": {
-            ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.uid == $uid && root.child('rooms').child($id).child('meta').exists() && newData.child('proof').val() == root.child('rooms').child($id).child('meta/verifier').val() && (newData.child('role').val() == data.child('role').val() || !root.child('rooms').child($id).child('connections').child(auth.uid).exists()) && (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val()) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
-            ".validate": "auth != null && auth.token.firebase.sign_in_provider == 'password' && $uid == auth.uid && newData.hasChildren(['role','proof']) && (newData.child('role').val() == 'broadcast' || newData.child('role').val() == 'leader') && newData.child('proof').val() == newData.parent().parent().child('meta/verifier').val() && (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val())",
+            ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && auth.uid == $uid && root.child('rooms').child($id).child('meta').exists() && newData.child('proof').val() == root.child('rooms').child($id).child('meta/verifier').val() && (newData.child('role').val() == data.child('role').val() || !root.child('rooms').child($id).child('connections').child(auth.uid).exists()) && (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val()) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
+            ".validate": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && $uid == auth.uid && newData.hasChildren(['role','proof']) && (newData.child('role').val() == 'broadcast' || newData.child('role').val() == 'leader') && newData.child('proof').val() == newData.parent().parent().child('meta/verifier').val() && (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val())",
             "role": {},
             "proof": {},
             "$other": {
               ".validate": false
-            }
+            },
+            ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && auth.uid == $uid"
           }
         },
         "connections": {
           "$uid": {
             "$connection": {
-              ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' || !newData.exists()) && auth.uid == $uid && root.child('rooms').child($id).child('meta').exists() && root.child('rooms').child($id).child('members').child(auth.uid).exists() && (!newData.exists() || !data.exists()) && (!newData.exists() || (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val())) && (!newData.exists() || root.child('access').child(auth.uid).child('status').val() == 'approved')",
+              ".write": "auth != null && ((auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) || !newData.exists()) && auth.uid == $uid && root.child('rooms').child($id).child('meta').exists() && root.child('rooms').child($id).child('members').child(auth.uid).exists() && (!newData.exists() || !data.exists()) && (!newData.exists() || (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val())) && (!newData.exists() || root.child('access').child(auth.uid).child('status').val() == 'approved')",
               ".validate": "newData.hasChildren(['role']) && newData.child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val() && newData.parent().parent().parent().child('seats').child(newData.child('role').val()).child('uid').val() == auth.uid && newData.parent().parent().parent().child('seats').child(newData.child('role').val()).child('connectionId').val() == $connection && newData.parent().parent().parent().child('events').child($connection).child('joined/uid').val() == auth.uid && !newData.parent().parent().parent().child('events').child($connection).child('left').exists()",
               "role": {},
               "$other": {
                 ".validate": false
               }
             }
-          }
+          },
+          ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && (root.child('rooms').child($id).child('members').child(auth.uid).exists() || root.child('administrators').child(auth.uid).val() == true)"
         },
         "messages": {
           "$message": {
-            ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && !data.exists() && newData.exists() && root.child('rooms').child($id).child('meta').exists() && root.child('rooms').child($id).child('members').child(auth.uid).exists() && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val()) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
-            ".validate": "newData.hasChildren(['id','uid','role','text','sentAt']) && newData.child('id').val() == $message && $message.matches(/^[a-zA-Z0-9-]{10,100}$/) && newData.child('uid').val() == auth.uid && newData.child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val() && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 500 && newData.child('sentAt').val() == now && newData.child('connectionId').isString() && root.child('rooms').child($id).child('seats').child(newData.child('role').val()).child('uid').val() == auth.uid && root.child('rooms').child($id).child('seats').child(newData.child('role').val()).child('connectionId').val() == newData.child('connectionId').val() && root.child('rooms').child($id).child('connections').child(auth.uid).child(newData.child('connectionId').val()).exists()",
+            ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && !data.exists() && newData.exists() && root.child('rooms').child($id).child('meta').exists() && root.child('rooms').child($id).child('members').child(auth.uid).exists() && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val()) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
+            ".validate": "newData.hasChildren(['id','uid','role','text','sentAt']) && newData.child('id').val() == $message && $message.matches(/^[a-zA-Z0-9-]{10,100}$/) && newData.child('uid').val() == auth.uid && newData.child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val() && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 500 && newData.child('sentAt').val() == now && newData.child('connectionId').isString() && root.child('rooms').child($id).child('seats').child(newData.child('role').val()).child('uid').val() == auth.uid && root.child('rooms').child($id).child('seats').child(newData.child('role').val()).child('connectionId').val() == newData.child('connectionId').val() && root.child('rooms').child($id).child('connections').child(auth.uid).child(newData.child('connectionId').val()).exists() && newData.parent().parent().child('sending').child(auth.uid).child('messageId').val() == $message && newData.parent().parent().child('sending').child(auth.uid).child('sentAt').val() == now",
             "id": {},
             "uid": {},
             "role": {},
@@ -69,27 +74,31 @@
             "$other": {
               ".validate": false
             },
-            "connectionId": {}
-          }
+            "connectionId": {},
+            ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && root.child('rooms').child($id).child('members').child(auth.uid).exists() && root.child('rooms').child($id).child('connections').child(auth.uid).exists() && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val())"
+          },
+          ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && root.child('rooms').child($id).child('members').child(auth.uid).exists() && root.child('rooms').child($id).child('connections').child(auth.uid).exists() && query.orderByChild == 'sentAt' && query.limitToLast != null && query.limitToLast <= 100 && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val())",
+          ".indexOn": ["sentAt"]
         },
         "$other": {
           ".validate": false
         },
         "seats": {
           "$role": {
-            ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && ($role == 'broadcast' || $role == 'leader') && root.child('rooms').child($id).child('members').child(auth.uid).child('role').val() == $role && newData.exists() && (!data.exists() || !root.child('rooms').child($id).child('connections').child(data.child('uid').val()).child(data.child('connectionId').val()).exists() || (data.child('uid').val() == auth.uid && data.child('connectionId').val() == newData.child('connectionId').val())) && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == $role) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
+            ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && ($role == 'broadcast' || $role == 'leader') && root.child('rooms').child($id).child('members').child(auth.uid).child('role').val() == $role && newData.exists() && (!data.exists() || !root.child('rooms').child($id).child('connections').child(data.child('uid').val()).child(data.child('connectionId').val()).exists() || (data.child('uid').val() == auth.uid && data.child('connectionId').val() == newData.child('connectionId').val())) && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == $role) && root.child('access').child(auth.uid).child('status').val() == 'approved'",
             ".validate": "newData.hasChildren(['uid','connectionId']) && newData.child('uid').val() == auth.uid && newData.child('connectionId').isString() && newData.child('connectionId').val().matches(/^[a-zA-Z0-9-]{10,100}$/) && newData.parent().parent().child('connections').child(auth.uid).child(newData.child('connectionId').val()).child('role').val() == $role",
             "uid": {},
             "connectionId": {},
             "$other": {
               ".validate": false
             }
-          }
+          },
+          ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && (root.child('rooms').child($id).child('members').child(auth.uid).exists() || root.child('administrators').child(auth.uid).val() == true)"
         },
         "events": {
           "$connection": {
             "$kind": {
-              ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' || ($kind == 'left' && data.parent().child('joined/uid').val() == auth.uid)) && root.child('rooms').child($id).child('meta').exists() && root.child('rooms').child($id).child('members').child(auth.uid).exists() && !data.exists() && newData.exists() && ($kind == 'left' || (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val())) && ($kind == 'left' || root.child('access').child(auth.uid).child('status').val() == 'approved')",
+              ".write": "auth != null && ((auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) || ($kind == 'left' && data.parent().child('joined/uid').val() == auth.uid)) && root.child('rooms').child($id).child('meta').exists() && root.child('rooms').child($id).child('members').child(auth.uid).exists() && !data.exists() && newData.exists() && ($kind == 'left' || (root.child('administrators').child(auth.uid).val() == true || newData.child('role').val() == root.child('profiles').child(auth.uid).child('role').val())) && ($kind == 'left' || root.child('access').child(auth.uid).child('status').val() == 'approved')",
               ".validate": "newData.hasChildren(['uid','role','type','sentAt']) && newData.child('uid').val() == auth.uid && newData.child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val() && newData.child('sentAt').val() == now && $connection.matches(/^[a-zA-Z0-9-]{10,100}$/) && (($kind == 'joined' && newData.child('type').val() == 'joined' && newData.parent().parent().parent().child('connections').child(auth.uid).child($connection).exists()) || ($kind == 'left' && (newData.child('type').val() == 'left' || newData.child('type').val() == 'disconnected') && (!data.parent().child('joined').exists() || data.parent().child('joined/uid').val() == auth.uid)))",
               "uid": {},
               "role": {},
@@ -99,6 +108,20 @@
                 ".validate": false
               }
             }
+          },
+          ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && root.child('rooms').child($id).child('members').child(auth.uid).exists() && root.child('rooms').child($id).child('connections').child(auth.uid).exists() && query.orderByChild == 'joined/sentAt' && query.limitToLast != null && query.limitToLast <= 100 && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == root.child('rooms').child($id).child('members').child(auth.uid).child('role').val())",
+          ".indexOn": ["joined/sentAt"]
+        },
+        "sending": {
+          "$uid": {
+            ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && auth.uid == $uid",
+            ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && root.child('rooms').child($id).child('members').child(auth.uid).exists() && root.child('rooms').child($id).child('connections').child(auth.uid).exists() && auth.uid == $uid && newData.exists()",
+            ".validate": "newData.hasChildren(['sentAt','messageId']) && newData.child('sentAt').val() == now && (!data.exists() || now - data.child('sentAt').val() >= 500) && newData.child('messageId').isString() && !root.child('rooms').child($id).child('messages').child(newData.child('messageId').val()).exists() && newData.parent().parent().child('messages').child(newData.child('messageId').val()).child('uid').val() == auth.uid",
+            "sentAt": {},
+            "messageId": {},
+            "$other": {
+              ".validate": false
+            }
           }
         }
       }
@@ -106,8 +129,8 @@
     "presets": {
       "$uid": {
         "$role": {
-          ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.uid == $uid && root.child('access').child(auth.uid).child('status').val() == 'approved' && ($role == 'broadcast' || $role == 'leader') && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == $role)",
-          ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.uid == $uid && root.child('access').child(auth.uid).child('status').val() == 'approved' && ($role == 'broadcast' || $role == 'leader') && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == $role) && newData.exists()",
+          ".read": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && auth.uid == $uid && root.child('access').child(auth.uid).child('status').val() == 'approved' && ($role == 'broadcast' || $role == 'leader') && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == $role)",
+          ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && auth.uid == $uid && root.child('access').child(auth.uid).child('status').val() == 'approved' && ($role == 'broadcast' || $role == 'leader') && (root.child('administrators').child(auth.uid).val() == true || root.child('profiles').child(auth.uid).child('role').val() == $role) && newData.exists()",
           ".validate": "newData.hasChildren(['revision']) && newData.child('revision').isNumber() && newData.child('revision').val() % 1 == 0 && newData.child('revision').val() < 9007199254740991 && newData.child('revision').val() == (data.exists() ? data.child('revision').val() + 1 : 1)",
           "revision": {},
           "items": {
@@ -120,26 +143,33 @@
               "text": {
                 ".validate": "newData.isString() && newData.val().matches(/[^ \\t\\r\\n]/) && newData.val().length <= 120"
               },
-              "$other": { ".validate": false }
+              "$other": {
+                ".validate": false
+              }
             }
           },
-          "$other": { ".validate": false }
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },
     "profiles": {
       "$uid": {
         ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.uid == $uid",
-        ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.uid == $uid && newData.exists() && (!data.exists() || (!data.child('email').exists() && newData.child('role').val() == data.child('role').val() && newData.child('createdAt').val() == data.child('createdAt').val()))",
-        ".validate": "newData.hasChildren(['role','email','createdAt']) && (newData.child('role').val() == 'broadcast' || newData.child('role').val() == 'leader') && newData.child('email').isString() && newData.child('email').val() == auth.token.email && newData.child('email').val().length <= 254 && (data.exists() ? newData.child('createdAt').val() == data.child('createdAt').val() : newData.child('createdAt').val() == now)",
+        ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.uid == $uid && newData.exists() && (!data.exists() || (newData.child('role').val() == data.child('role').val() && newData.child('createdAt').val() == data.child('createdAt').val() && (!data.child('email').exists() || newData.child('email').val() == data.child('email').val())))",
+        ".validate": "newData.hasChildren(['role','email','createdAt']) && (newData.child('role').val() == 'broadcast' || newData.child('role').val() == 'leader') && newData.child('email').isString() && newData.child('email').val() == auth.token.email && newData.child('email').val().length <= 254 && (data.exists() ? newData.child('createdAt').val() == data.child('createdAt').val() : newData.child('createdAt').val() == now) && (!data.child('emailVerified').exists() || newData.child('emailVerified').exists())",
         "role": {},
         "createdAt": {},
         "$other": {
           ".validate": false
         },
-        "email": {}
+        "email": {},
+        "emailVerified": {
+          ".validate": "newData.isBoolean() && newData.val() == (auth.token.email_verified == true) && (!data.exists() || data.val() != true || newData.val() == true)"
+        }
       },
-      ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && root.child('administrators').child(auth.uid).val() == true"
+      ".read": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && root.child('administrators').child(auth.uid).val() == true"
     },
     "administrators": {
       "$uid": {
@@ -148,16 +178,25 @@
       }
     },
     "access": {
-      ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && root.child('administrators').child(auth.uid).val() == true",
+      ".read": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && root.child('administrators').child(auth.uid).val() == true",
       "$uid": {
         ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.uid == $uid",
-        ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && root.child('administrators').child(auth.uid).val() == true && auth.uid != $uid && root.child('administrators').child($uid).val() != true && root.child('profiles').child($uid).exists() && newData.exists()",
-        ".validate": "newData.hasChildren(['status','reviewedAt','reviewedBy']) && (newData.child('status').val() == 'approved' || newData.child('status').val() == 'rejected') && newData.child('reviewedAt').val() == now && newData.child('reviewedBy').val() == auth.uid",
+        ".write": "auth != null && (auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true) && root.child('administrators').child(auth.uid).val() == true && auth.uid != $uid && root.child('administrators').child($uid).val() != true && root.child('profiles').child($uid).exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['status','reviewedAt','reviewedBy']) && (newData.child('status').val() == 'approved' || newData.child('status').val() == 'rejected') && newData.child('reviewedAt').val() == now && newData.child('reviewedBy').val() == auth.uid && (newData.child('status').val() != 'approved' || root.child('profiles').child($uid).child('emailVerified').val() == true)",
         "status": {},
         "reviewedAt": {},
         "reviewedBy": {},
         "$other": {
           ".validate": false
+        }
+      }
+    },
+    "ownedRooms": {
+      "$uid": {
+        ".read": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && (auth.uid == $uid || root.child('administrators').child(auth.uid).val() == true)",
+        "$slot": {
+          ".write": "auth != null && auth.token.firebase.sign_in_provider == 'password' && auth.token.email_verified == true && root.child('access').child(auth.uid).child('status').val() == 'approved' && ((!data.exists() && newData.isString() && auth.uid == $uid && newData.parent().parent().parent().child('rooms').child(newData.val()).child('meta/owner').val() == $uid && newData.parent().parent().parent().child('rooms').child(newData.val()).child('meta/ownerSlot').val() == $slot) || (data.exists() && !newData.exists() && !newData.parent().parent().parent().child('rooms').child(data.val()).exists() && (auth.uid == $uid || (root.child('administrators').child(auth.uid).val() == true && !root.child('rooms').child(data.val()).child('connections').exists()))))",
+          ".validate": "$slot.matches(/^[0-2]$/) && newData.isString()"
         }
       }
     }

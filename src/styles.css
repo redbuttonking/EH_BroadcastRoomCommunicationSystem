@@ -507,6 +507,26 @@ p {
   font-size: 12px;
   padding-top: 25px;
 }
+.verification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.room-option-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.room-option-wrap .room-option {
+  flex: 1;
+  min-width: 0;
+}
+.history-more {
+  margin: 0 auto 12px;
+  display: flex;
+}
 .room-options {
   margin-top: 27px;
 }

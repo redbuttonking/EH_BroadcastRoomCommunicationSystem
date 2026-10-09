@@ -244,7 +244,12 @@ test('an administrator lands on home and can create, approve and reenter with ei
     await page.getByRole('button', { name: '나가기', exact: true }).click()
     await page.getByRole('button', { name: '방을 완전히 닫기' }).click()
     await expect(page.getByRole('heading', { name: '열려 있는 방' })).toBeVisible()
-    expect(await readProfile()).toEqual({ email, role: 'leader', createdAt: 100 })
+    expect(await readProfile()).toEqual({
+      email,
+      role: 'leader',
+      createdAt: 100,
+      emailVerified: true,
+    })
     await page.getByRole('button', { name: '로그아웃', exact: true }).click()
     await signIn(page, email)
     await expect(page.getByRole('heading', { name: '열려 있는 방' })).toBeVisible()
@@ -279,5 +284,5 @@ test('existing role profiles require approval and ordinary broadcast users have 
       )
       return r.json()
     })
-    .toEqual({ role: 'broadcast', createdAt: 100, email })
+    .toEqual({ role: 'broadcast', createdAt: 100, email, emailVerified: true })
 })

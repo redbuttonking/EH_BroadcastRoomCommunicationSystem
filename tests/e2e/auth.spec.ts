@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ACCOUNT_PASSWORD, signIn, signUp, uniqueEmail } from './auth-helpers'
+import { ACCOUNT_PASSWORD, signIn, signUp, uniqueEmail, verifyEmail } from './auth-helpers'
 
 const EMULATOR = 'http://127.0.0.1:9099'
 const ROOM_PASSWORD = 'local-auth-room'
@@ -27,6 +27,7 @@ test('existing email accounts choose their role once after login', async ({ page
   await page.getByLabel('이메일', { exact: true }).fill(email)
   await page.getByLabel('비밀번호', { exact: true }).fill(ACCOUNT_PASSWORD)
   await page.getByRole('button', { name: '로그인', exact: true }).click()
+  await verifyEmail(page, email)
   await expect(page.getByRole('heading', { name: '계정 역할 설정' })).toBeVisible()
   await page.getByRole('radio', { name: '방송실', exact: true }).check()
   await page.getByRole('button', { name: '역할을 설정하고 승인 요청' }).click()

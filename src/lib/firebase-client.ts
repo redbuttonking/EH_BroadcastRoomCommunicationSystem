@@ -7,6 +7,8 @@ import {
   inMemoryPersistence,
   initializeAuth,
   onAuthStateChanged,
+  reload,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
@@ -20,6 +22,11 @@ import {
   goOnline,
   onDisconnect,
   onValue,
+  get,
+  query,
+  orderByChild,
+  limitToLast,
+  endBefore,
   ref,
   type Database,
   type OnDisconnect,
@@ -47,7 +54,7 @@ type Session = { id: string; code: string; uid: string }
 type DirectoryEntry = Omit<Session, 'uid'> & { name?: string; salt: string; createdAt: number }
 type FirebaseMessage = { id: string; uid: string; role: Role; text: string; sentAt: number }
 type Activity = { uid: string; role: Role; sentAt: number; type: RoomEvent['type'] }
-type AccountProfile = { role: Role; email?: string; createdAt: number }
+type AccountProfile = { role: Role; email?: string; createdAt: number; emailVerified?: boolean }
 type AccountAccess = { status: 'approved' | 'rejected'; reviewedAt: number; reviewedBy: string }
 type RoomData = {
   meta: {
@@ -57,6 +64,7 @@ type RoomData = {
     createdAt: number
     salt: string
     verifier: string
+    ownerSlot?: string
   }
   members: Record<string, { role: Role; proof: string }>
   seats?: Partial<Record<Role, { uid: string; connectionId: string }>>
@@ -66,6 +74,7 @@ type RoomData = {
 }
 const SESSION_KEY = 'eh:firebase-room:v2'
 const SERVER_TIME = { '.sv': 'timestamp' }
+const PAGE_SIZE = 100
 
 function readSession(): Session | null {
   try {
@@ -129,6 +138,8 @@ export class FirebaseRoomClient implements RoomTransport {
     membership: null,
     pending: [],
     notice: '',
+    hasEarlier: false,
+    loadingEarlier: false,
   }
   private listeners = new Set<() => void>()
   private online = false
@@ -150,6 +161,10 @@ export class FirebaseRoomClient implements RoomTransport {
   private authEpoch = 0
   private accountUser: User | null = null
   private registeringAccount = false
+  private stopChat?: () => void
+  private startChat?: () => void
+  private earlierPage?: () => Promise<void>
+  private lastMessageAt = 0
 
   constructor(
     private readonly options: FirebaseOptions,
@@ -203,6 +218,12 @@ export class FirebaseRoomClient implements RoomTransport {
         if (this.auth.currentUser?.uid !== next?.uid) this.disconnectAccount()
       })
       onAuthStateChanged(this.auth, (user) => this.connectAccount(user))
+      const resume = () => {
+        if (this.state.account && !this.online && document.visibilityState === 'visible')
+          goOnline(this.db)
+      }
+      window.addEventListener('online', resume)
+      document.addEventListener('visibilitychange', resume)
     } catch {
       this.started = false
       this.update({
@@ -260,6 +281,7 @@ export class FirebaseRoomClient implements RoomTransport {
         role: null,
         approval: 'pending',
         isAdmin: false,
+        emailVerified: user.emailVerified,
       },
       profileReady: false,
       profileError: '',
@@ -277,6 +299,7 @@ export class FirebaseRoomClient implements RoomTransport {
         this.online = snapshot.val() === true
         if (!this.online) {
           this.generation++
+          this.stopChat?.()
           this.presence = undefined
           this.presenceTask = null
           this.update({
@@ -346,6 +369,8 @@ export class FirebaseRoomClient implements RoomTransport {
             profileError: '',
           })
           this.syncRoomAccess(epoch)
+          if (user.emailVerified && value && value.emailVerified !== true)
+            void this.rest(`profiles/${user.uid}/emailVerified`, 'PUT', true).catch(() => {})
           // Existing accounts add only their authenticated email; their role stays fixed.
           if (role && !value?.email && user.email)
             void this.rest(`profiles/${user.uid}/email`, 'PUT', user.email).catch(() => {})
@@ -393,6 +418,7 @@ export class FirebaseRoomClient implements RoomTransport {
 
   private syncRoomAccess(epoch: number) {
     if (
+      this.state.account?.emailVerified &&
       this.state.profileReady &&
       this.state.accessReady &&
       (this.state.account?.isAdmin || this.state.account?.role) &&
@@ -528,6 +554,7 @@ export class FirebaseRoomClient implements RoomTransport {
             email: profile.email || '다음 로그인에서 이메일이 표시됩니다.',
             role: profile.role,
             createdAt: profile.createdAt,
+            emailVerified: profile.emailVerified === true,
             status:
               access![uid]?.status === 'approved' || access![uid]?.status === 'rejected'
                 ? access![uid].status
@@ -584,6 +611,30 @@ export class FirebaseRoomClient implements RoomTransport {
     }
   }
 
+  async sendVerification() {
+    const user = this.auth.currentUser
+    if (!user) throw new Error('로그인한 뒤 다시 시도해 주세요.')
+    try {
+      await sendEmailVerification(user)
+    } catch (error) {
+      throw new Error(authenticationError(error))
+    }
+  }
+
+  async refreshVerification() {
+    const user = this.auth.currentUser
+    if (!user) throw new Error('다시 로그인해 주세요.')
+    await reload(user)
+    await user.getIdToken(true)
+    if (!user.emailVerified)
+      throw new Error('아직 인증이 확인되지 않았습니다. 메일의 링크를 먼저 눌러 주세요.')
+    const profile = await this.rest<AccountProfile | null>(`profiles/${user.uid}`, 'GET')
+    if (profile && profile.emailVerified !== true)
+      await this.rest(`profiles/${user.uid}/emailVerified`, 'PUT', true)
+    this.disconnectAccount()
+    this.connectAccount(user)
+  }
+
   async signUp(email: string, password: string, role: Role) {
     if (!this.state.authReady || this.state.authError)
       throw new Error('로그인 준비가 끝난 뒤 다시 시도해 주세요.')
@@ -620,6 +671,7 @@ export class FirebaseRoomClient implements RoomTransport {
       await this.rest(`profiles/${uid}`, 'PUT', {
         role,
         email: this.auth.currentUser!.email,
+        emailVerified: this.auth.currentUser!.emailVerified,
         createdAt: SERVER_TIME,
       })
     } catch {
@@ -696,7 +748,9 @@ export class FirebaseRoomClient implements RoomTransport {
     if (!this.state.account.isAdmin && !this.state.account.role && command.type !== 'leave')
       throw new Error('계정 역할을 먼저 설정해 주세요.')
     if (
-      (!this.state.accessReady || this.state.account.approval !== 'approved') &&
+      (!this.state.accessReady ||
+        !this.state.account.emailVerified ||
+        this.state.account.approval !== 'approved') &&
       command.type !== 'leave'
     )
       throw new Error('관리자의 이용 승인이 필요합니다.')
@@ -737,6 +791,12 @@ export class FirebaseRoomClient implements RoomTransport {
       throw new Error(`방 이름은 1~${ROOM_NAME_MAX}자로 입력해 주세요.`)
     const uid = this.auth.currentUser!.uid
     const epoch = this.authEpoch
+    const slots = await this.rest<Record<string, string> | null>(`ownedRooms/${uid}`, 'GET')
+    const ownerSlot = ['0', '1', '2'].find((slot) => !slots?.[slot])
+    if (ownerSlot === undefined)
+      throw new Error(
+        '계정당 방은 최대 3개까지 유지할 수 있습니다. 사용하지 않는 방을 닫은 뒤 만들어 주세요.',
+      )
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)))
     const proof = await derivePasswordProof(password, salt)
     if (epoch !== this.authEpoch) throw new Error('계정이 변경되었습니다. 다시 시도해 주세요.')
@@ -749,16 +809,25 @@ export class FirebaseRoomClient implements RoomTransport {
     try {
       await this.rest('', 'PATCH', {
         [`rooms/${id}`]: {
-          meta: { owner: uid, code, name, createdAt: SERVER_TIME, salt, verifier: proof },
+          meta: {
+            owner: uid,
+            ownerSlot,
+            code,
+            name,
+            createdAt: SERVER_TIME,
+            salt,
+            verifier: proof,
+          },
           members: { [uid]: { role: 'broadcast', proof } },
         },
         [`directory/${code}`]: { id, code, name, createdAt: SERVER_TIME, salt },
+        [`ownedRooms/${uid}/${ownerSlot}`]: id,
       })
     } catch (error) {
       // A lost HTTP response can still have committed. Never repeat CREATE.
       try {
-        const existing = await this.rest<RoomData | null>(`rooms/${id}`, 'GET')
-        if (!existing || existing.meta.owner !== uid) throw error
+        const existing = await this.rest<RoomData['meta'] | null>(`rooms/${id}/meta`, 'GET')
+        if (!existing || existing.owner !== uid) throw error
       } catch {
         throw error
       }
@@ -820,6 +889,7 @@ export class FirebaseRoomClient implements RoomTransport {
   private watchRoom(session: Session) {
     if (
       session.uid !== this.state.account?.uid ||
+      !this.state.account.emailVerified ||
       this.state.account.approval !== 'approved' ||
       !this.state.accessReady
     )
@@ -828,73 +898,280 @@ export class FirebaseRoomClient implements RoomTransport {
     this.generation++
     this.roomUnsubscribe?.()
     this.session = session
-    this.update({ connection: 'connecting', notice: '', pending: [], room: null, membership: null })
+    this.update({
+      connection: 'connecting',
+      notice: '',
+      pending: [],
+      room: null,
+      membership: null,
+      hasEarlier: false,
+      loadingEarlier: false,
+    })
     try {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
     } catch {
       /* Optional. */
     }
-    this.roomUnsubscribe = onValue(
-      ref(this.db, `rooms/${session.id}`),
-      (snapshot) => {
-        if (this.session?.id !== session.id || epoch !== this.authEpoch) return
-        const data = snapshot.val() as RoomData | null
-        if (!data) {
-          this.resetRoom('방이 종료되었습니다. 대화가 삭제되었습니다.')
-          return
-        }
-        const member = data.members[session.uid]
-        if (!member || !this.canUseRole(member.role)) {
-          this.releaseRoomAccess('다시 비밀번호로 입장해 주세요.')
-          return
-        }
-        const participants = { broadcast: 0, leader: 0 }
-        for (const role of ['broadcast', 'leader'] as const) {
-          const seat = data.seats?.[role]
-          participants[role] = seat && data.connections?.[seat.uid]?.[seat.connectionId] ? 1 : 0
-        }
-        const events: RoomEvent[] = Object.entries(data.events || {}).flatMap(([id, event]) => {
-          // A disconnect may happen before the admission write reaches the server.
-          // Such an attempt never entered the room and must not appear in its history.
-          if (!event.joined) return []
-          return [event.joined, ...(event.left ? [event.left] : [])].map((item) => ({
-            id: `${id}:${item.type}`,
-            role: item.role,
-            type: item.type,
-            sentAt: item.sentAt,
-          }))
-        })
-        const messages = Object.values(data.messages || {})
-          .sort((a, b) => a.sentAt - b.sentAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-          .map(({ uid: _uid, ...message }, index) => ({ ...message, sequence: index + 1 }))
-        const room: RoomSnapshot = {
-          code: data.meta.code,
-          name: data.meta.name || `대화방 ${data.meta.code}`,
-          createdAt: data.meta.createdAt,
+    let disposed = false
+    let meta: RoomData['meta'] | null | undefined
+    let member: RoomData['members'][string] | null | undefined
+    let seats: RoomData['seats'] = {}
+    let connections: RoomData['connections'] = {}
+    let messages: Record<string, FirebaseMessage> = {}
+    let events: NonNullable<RoomData['events']> = {}
+    let messageCursor: { key: string; time: number } | null = null
+    let eventCursor: { key: string; time: number } | null = null
+    let moreMessages = false,
+      moreEvents = false
+    let streaming = false
+    let streamVersion = 0
+    let streamStops: Unsubscribe[] = []
+    const valid = () => !disposed && epoch === this.authEpoch && this.session?.id === session.id
+    const publish = () => {
+      if (!valid() || !meta || !member) return
+      if (!this.canUseRole(member.role)) {
+        this.releaseRoomAccess('다시 비밀번호로 입장해 주세요.')
+        return
+      }
+      const participants = { broadcast: 0, leader: 0 }
+      for (const role of ['broadcast', 'leader'] as const) {
+        const seat = seats?.[role]
+        participants[role] = seat && connections?.[seat.uid]?.[seat.connectionId] ? 1 : 0
+      }
+      const chat = Object.values(messages)
+        .sort((a, b) => a.sentAt - b.sentAt || a.id.localeCompare(b.id))
+        .map(({ uid: _uid, ...message }, index) => ({ ...message, sequence: index + 1 }))
+      const activity: RoomEvent[] = Object.entries(events).flatMap(([id, event]) =>
+        !event.joined
+          ? []
+          : [event.joined, ...(event.left ? [event.left] : [])].map((item) => ({
+              id: `${id}:${item.type}`,
+              role: item.role,
+              type: item.type,
+              sentAt: item.sentAt,
+            })),
+      )
+      this.update({
+        room: {
+          code: meta.code,
+          name: meta.name || `대화방 ${meta.code}`,
+          createdAt: meta.createdAt,
           participants,
-          messages,
-          events,
-        }
-        const membership: Membership = {
-          code: room.code,
+          messages: chat,
+          events: activity,
+        },
+        membership: {
+          code: meta.code,
           role: member.role,
           token: '',
-          canClose: member.role === 'broadcast' && data.meta.owner === session.uid,
-        }
-        this.update({
-          room,
-          membership,
-          pending: this.state.pending.filter(
-            (message) => !messages.some((sent) => sent.id === message.id),
+          canClose: member.role === 'broadcast' && meta.owner === session.uid,
+        },
+        pending: this.state.pending.filter((item) => !messages[item.id]),
+        hasEarlier: moreMessages || moreEvents,
+      })
+      if (this.online) void this.ensurePresence()
+    }
+    const stopStreams = () => {
+      streamVersion++
+      streamStops.forEach((stop) => stop())
+      streamStops = []
+      streaming = false
+    }
+    const accessEnded = async () => {
+      if (!valid()) return
+      // Closing a room revokes child subscriptions before their null snapshots arrive.
+      const missing = await this.rest<RoomData['meta'] | null>(`rooms/${session.id}/meta`, 'GET')
+        .then((value) => value === null)
+        .catch(() => false)
+      if (!valid()) return
+      if (missing) this.resetRoom('방이 종료되었습니다. 대화가 삭제되었습니다.')
+      else this.releaseRoomAccess('이용 권한을 확인한 뒤 다시 입장해 주세요.')
+    }
+    const startStreams = () => {
+      if (!valid() || streaming || !this.presence || !this.online) return
+      streaming = true
+      const version = ++streamVersion
+      messages = {}
+      events = {}
+      messageCursor = null
+      eventCursor = null
+      moreMessages = false
+      moreEvents = false
+      const failed = () => {
+        if (!valid() || version !== streamVersion) return
+        stopStreams()
+        if (this.online && this.presence) void accessEnded()
+      }
+      streamStops.push(
+        onValue(
+          query(
+            ref(this.db, `rooms/${session.id}/messages`),
+            orderByChild('sentAt'),
+            limitToLast(PAGE_SIZE),
           ),
-        })
-        if (this.online) void this.ensurePresence()
-      },
-      () => {
-        if (this.session?.id === session.id && epoch === this.authEpoch)
-          this.releaseRoomAccess('이용 권한을 확인한 뒤 다시 입장해 주세요.')
-      },
-    )
+          (snapshot) => {
+            if (!valid() || version !== streamVersion) return
+            const value = (snapshot.val() || {}) as Record<string, FirebaseMessage>
+            const ordered = Object.entries(value).sort(
+              (a, b) => a[1].sentAt - b[1].sentAt || a[0].localeCompare(b[0]),
+            )
+            if (!messageCursor && ordered.length) {
+              messageCursor = { key: ordered[0][0], time: ordered[0][1].sentAt }
+              moreMessages = ordered.length === PAGE_SIZE
+            }
+            Object.assign(messages, value)
+            publish()
+          },
+          failed,
+        ),
+      )
+      streamStops.push(
+        onValue(
+          query(
+            ref(this.db, `rooms/${session.id}/events`),
+            orderByChild('joined/sentAt'),
+            limitToLast(PAGE_SIZE),
+          ),
+          (snapshot) => {
+            if (!valid() || version !== streamVersion) return
+            const value = (snapshot.val() || {}) as NonNullable<RoomData['events']>
+            const ordered = Object.entries(value)
+              .filter(([, v]) => v.joined)
+              .sort((a, b) => a[1].joined!.sentAt - b[1].joined!.sentAt || a[0].localeCompare(b[0]))
+            if (!eventCursor && ordered.length) {
+              eventCursor = { key: ordered[0][0], time: ordered[0][1].joined!.sentAt }
+              moreEvents = ordered.length === PAGE_SIZE
+            }
+            Object.assign(events, value)
+            publish()
+          },
+          failed,
+        ),
+      )
+    }
+    this.stopChat = stopStreams
+    this.startChat = startStreams
+    this.earlierPage = async () => {
+      if (!valid() || !streaming || !this.online || this.state.loadingEarlier) return
+      const version = streamVersion
+      this.update({ loadingEarlier: true })
+      try {
+        if (moreMessages && messageCursor) {
+          const snapshot = await get(
+            query(
+              ref(this.db, `rooms/${session.id}/messages`),
+              orderByChild('sentAt'),
+              endBefore(messageCursor.time, messageCursor.key),
+              limitToLast(PAGE_SIZE),
+            ),
+          )
+          if (!valid() || version !== streamVersion) return
+          const value = (snapshot.val() || {}) as Record<string, FirebaseMessage>
+          const ordered = Object.entries(value).sort(
+            (a, b) => a[1].sentAt - b[1].sentAt || a[0].localeCompare(b[0]),
+          )
+          Object.assign(messages, value)
+          moreMessages = ordered.length === PAGE_SIZE
+          if (ordered.length) messageCursor = { key: ordered[0][0], time: ordered[0][1].sentAt }
+        }
+        if (moreEvents && eventCursor) {
+          const snapshot = await get(
+            query(
+              ref(this.db, `rooms/${session.id}/events`),
+              orderByChild('joined/sentAt'),
+              endBefore(eventCursor.time, eventCursor.key),
+              limitToLast(PAGE_SIZE),
+            ),
+          )
+          if (!valid() || version !== streamVersion) return
+          const value = (snapshot.val() || {}) as NonNullable<RoomData['events']>
+          const ordered = Object.entries(value)
+            .filter(([, v]) => v.joined)
+            .sort((a, b) => a[1].joined!.sentAt - b[1].joined!.sentAt || a[0].localeCompare(b[0]))
+          Object.assign(events, value)
+          moreEvents = ordered.length === PAGE_SIZE
+          if (ordered.length)
+            eventCursor = { key: ordered[0][0], time: ordered[0][1].joined!.sentAt }
+        }
+        publish()
+      } finally {
+        if (valid()) this.update({ loadingEarlier: false })
+      }
+    }
+    const controlFailed = () => {
+      void accessEnded()
+    }
+    const controls = [
+      onValue(
+        ref(this.db, `rooms/${session.id}/meta`),
+        (snapshot) => {
+          if (!valid()) return
+          meta = snapshot.val()
+          if (!meta) {
+            this.resetRoom('방이 종료되었습니다. 대화가 삭제되었습니다.')
+            return
+          }
+          publish()
+        },
+        controlFailed,
+      ),
+      onValue(
+        ref(this.db, `rooms/${session.id}/members/${session.uid}`),
+        (snapshot) => {
+          if (!valid()) return
+          member = snapshot.val()
+          publish()
+        },
+        controlFailed,
+      ),
+      onValue(
+        ref(this.db, `rooms/${session.id}/seats`),
+        (snapshot) => {
+          if (!valid()) return
+          seats = snapshot.val() || {}
+          publish()
+        },
+        controlFailed,
+      ),
+      onValue(
+        ref(this.db, `rooms/${session.id}/connections`),
+        (snapshot) => {
+          if (!valid()) return
+          connections = snapshot.val() || {}
+          publish()
+        },
+        controlFailed,
+      ),
+    ]
+    this.roomUnsubscribe = () => {
+      disposed = true
+      stopStreams()
+      controls.forEach((stop) => stop())
+    }
+  }
+
+  async loadEarlier() {
+    await this.earlierPage?.()
+  }
+
+  async closeUnusedRoom(code: string) {
+    if (!this.state.account?.isAdmin || !this.state.account.emailVerified)
+      throw new Error('관리자만 방을 정리할 수 있습니다.')
+    const entry = this.directory.get(code)
+    if (!entry) throw new Error('이미 종료된 방입니다.')
+    try {
+      const meta = await this.rest<RoomData['meta'] | null>(`rooms/${entry.id}/meta`, 'GET')
+      const remove: Record<string, null> = {
+        [`rooms/${entry.id}`]: null,
+        [`directory/${code}`]: null,
+      }
+      if (meta?.ownerSlot !== undefined) remove[`ownedRooms/${meta.owner}/${meta.ownerSlot}`] = null
+      await this.rest('', 'PATCH', remove)
+    } catch (error) {
+      if (error instanceof DatabaseRequestError)
+        throw new Error('참여자가 있는 방은 정리할 수 없습니다. 모두 나간 뒤 다시 시도해 주세요.')
+      throw error
+    }
   }
 
   private ensurePresence(): Promise<void> {
@@ -955,6 +1232,7 @@ export class FirebaseRoomClient implements RoomTransport {
         }
         this.presence = { path, id, operation, departure }
         this.update({ connection: 'connected' })
+        this.startChat?.()
       } catch (error) {
         if (
           generation === this.generation &&
@@ -986,9 +1264,15 @@ export class FirebaseRoomClient implements RoomTransport {
 
   private async leave() {
     const presence = this.presence
+    this.stopChat?.()
     if (presence && this.online) {
-      await this.rest('', 'PATCH', presence.departure)
-      await presence.operation.cancel()
+      try {
+        await this.rest('', 'PATCH', presence.departure)
+        await presence.operation.cancel()
+      } catch (error) {
+        this.startChat?.()
+        throw error
+      }
     } else if (this.session) {
       // Terminate this SDK connection so its queued disconnect operation can release the seat.
       goOffline(this.db)
@@ -1001,10 +1285,13 @@ export class FirebaseRoomClient implements RoomTransport {
     const session = this.session
     if (!session || !this.state.membership?.canClose)
       throw new Error('이 방을 만든 방송실 계정만 방을 닫을 수 있습니다.')
-    await this.rest('', 'PATCH', {
+    const meta = await this.rest<RoomData['meta']>(`rooms/${session.id}/meta`, 'GET')
+    const remove: Record<string, null> = {
       [`rooms/${session.id}`]: null,
       [`directory/${session.code}`]: null,
-    })
+    }
+    if (meta.ownerSlot !== undefined) remove[`ownedRooms/${meta.owner}/${meta.ownerSlot}`] = null
+    await this.rest('', 'PATCH', remove)
     this.resetRoom('방이 종료되었습니다. 대화가 삭제되었습니다.')
   }
 
@@ -1019,6 +1306,9 @@ export class FirebaseRoomClient implements RoomTransport {
       throw new Error('연결을 확인한 뒤 다시 시도해 주세요.')
     if (!text.trim() || text.length > MAX_MESSAGE_LENGTH)
       throw new Error(`메시지는 1~${MAX_MESSAGE_LENGTH}자로 입력해 주세요.`)
+    if (!retryId && Date.now() - this.lastMessageAt < 500)
+      throw new Error('문구가 연속으로 눌렸습니다. 잠시 후 다시 보내 주세요.')
+    this.lastMessageAt = Date.now()
     const id = retryId ?? crypto.randomUUID()
     const path = `rooms/${session.id}/messages/${id}`
     const uid = this.auth.currentUser!.uid
@@ -1033,13 +1323,16 @@ export class FirebaseRoomClient implements RoomTransport {
       if (prior && (prior.uid !== uid || prior.text !== text))
         throw new Error('이미 사용된 메시지 번호입니다.')
       if (!prior)
-        await this.rest(path, 'PUT', {
-          id,
-          uid,
-          role: membership.role,
-          text,
-          sentAt: SERVER_TIME,
-          connectionId: this.presence?.id,
+        await this.rest('', 'PATCH', {
+          [path]: {
+            id,
+            uid,
+            role: membership.role,
+            text,
+            sentAt: SERVER_TIME,
+            connectionId: this.presence?.id,
+          },
+          [`rooms/${session.id}/sending/${uid}`]: { sentAt: SERVER_TIME, messageId: id },
         })
       this.update({ pending: this.state.pending.filter((message) => message.id !== id) })
     } catch (error) {
@@ -1059,6 +1352,9 @@ export class FirebaseRoomClient implements RoomTransport {
     this.generation++
     this.roomUnsubscribe?.()
     this.roomUnsubscribe = undefined
+    this.stopChat = undefined
+    this.startChat = undefined
+    this.earlierPage = undefined
     if (this.presence && this.online) void this.presence.operation.cancel().catch(() => {})
     this.presence = undefined
     this.presenceTask = null
@@ -1073,6 +1369,8 @@ export class FirebaseRoomClient implements RoomTransport {
       room: null,
       pending: [],
       notice,
+      hasEarlier: false,
+      loadingEarlier: false,
       connection: this.online ? 'connected' : 'disconnected',
     })
   }

@@ -1,0 +1,53 @@
+name: Deploy verified version
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '예배 중이 아닌지 확인하고 deploy 입력'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'deploy'
+    uses: ./.github/workflows/ci.yml
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VITE_FIREBASE_EMULATORS: 'false'
+      VITE_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      VITE_FIREBASE_PROJECT_ID: eh-worship-chat
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_DATABASE_URL: ${{ vars.FIREBASE_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Check deployment configuration
+        env:
+          WIF_PROVIDER: ${{ vars.FIREBASE_WIF_PROVIDER }}
+          DEPLOY_ACCOUNT: ${{ vars.FIREBASE_DEPLOY_ACCOUNT }}
+        run: |
+          test -n "$WIF_PROVIDER" && test -n "$DEPLOY_ACCOUNT"
+          test -n "$VITE_FIREBASE_API_KEY" && test -n "$VITE_FIREBASE_AUTH_DOMAIN" && test -n "$VITE_FIREBASE_DATABASE_URL"
+      - run: npm ci
+      - run: npm run build:production
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.FIREBASE_WIF_PROVIDER }}
+          service_account: ${{ vars.FIREBASE_DEPLOY_ACCOUNT }}
+      - run: npx firebase deploy --only database,hosting --project eh-worship-chat --non-interactive
