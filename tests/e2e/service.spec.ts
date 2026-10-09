@@ -235,6 +235,8 @@ test('preset drag and keyboard reorder preserve text, confirm movement and keep 
   await editor.getByRole('button', { name: '문구 1 드래그하여 이동', exact: true }).focus()
   await page.keyboard.press('Space', { delay: 60 })
   await expect(editor.locator('.preset-drag-preview')).toBeVisible()
+  // The overlay can appear before the keyboard sensor has measured its first target.
+  await expect(page.getByText('1번째 위치입니다.', { exact: true })).toBeAttached()
   await page.keyboard.press('ArrowDown', { delay: 60 })
   await expect(page.getByText('2번째 위치입니다.', { exact: true })).toBeAttached()
   await page.keyboard.press('Escape', { delay: 60 })
@@ -244,6 +246,7 @@ test('preset drag and keyboard reorder preserve text, confirm movement and keep 
   await editor.getByRole('button', { name: '문구 1 드래그하여 이동', exact: true }).focus()
   await page.keyboard.press('Space', { delay: 60 })
   await expect(editor.locator('.preset-drag-preview')).toBeVisible()
+  await expect(page.getByText('1번째 위치입니다.', { exact: true })).toBeAttached()
   await page.keyboard.press('ArrowDown', { delay: 60 })
   await expect(page.getByText('2번째 위치입니다.', { exact: true })).toBeAttached()
   await page.keyboard.press('Space', { delay: 60 })
