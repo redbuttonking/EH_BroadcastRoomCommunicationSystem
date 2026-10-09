@@ -104,7 +104,9 @@ Hosting에는 CSP, 외부 프레임 삽입 차단, 권한 제한 헤더가 적�
 
 ### GitHub 검사와 선택적 배포
 
-`.github/workflows/ci.yml`은 main 변경과 PR에서 포맷·운영 의존성 취약점·단위·에뮬레이터 규칙·Chromium/WebKit 화면 검사를 수행하도록 작성했다. 실제 프로젝트 대신 demo 에뮬레이터를 사용한다. 개발 도구의 취약점 알림은 Dependabot으로 확인하며 자동 병합하지 않는다.
+`.github/workflows/ci.yml`은 main 변경과 PR에서 포맷·운영 의존성 취약점·단위·에뮬레이터 규칙·Chromium/WebKit 화면 검사를 수행한다. 실제 프로젝트 대신 demo 에뮬레이터를 사용한다. Dependabot의 npm·GitHub Actions 일반 업데이트 제안은 월 1회 확인하며 자동 병합하지 않는다. 보안 알림은 일반 업데이트 일정과 별도로 우선 확인한다.
+
+main에는 직접 푸시하지 않고 임시 브랜치에서 PR을 만든다. 최신 main을 반영한 `verify` 검사가 GitHub Actions에서 성공해야 병합할 수 있다. 이 보호는 관리자에게도 적용하며 main 삭제와 강제 덮어쓰기도 막는다. 다른 사람의 승인 수는 0명으로 설정하여 혼자서 검토·병합할 수 있다. 병합한 원격 브랜치는 자동 삭제하고, 거절하거나 다른 PR로 대체한 제안은 닫은 뒤 해당 브랜치도 정리한다. main 반영과 실제 Firebase 배포는 별개다.
 
 `.github/workflows/deploy.yml`은 main에서 수동으로 실행하고 확인란에 deploy를 입력한 뒤, 같은 검사가 통과해야 배포하게 구성했다. production 환경의 FIREBASE_API_KEY·FIREBASE_AUTH_DOMAIN·FIREBASE_DATABASE_URL·FIREBASE_WIF_PROVIDER·FIREBASE_DEPLOY_ACCOUNT 변수가 필요하다. 장기 서비스 계정 비밀 키 대신 저장소·main·배포 워크플로·수동 실행으로 제한한 Workload Identity Federation을 사용하도록 준비했다. Firebase 웹 API 키는 앱 식별용이며 관리자 비밀 키가 아니다.
 
