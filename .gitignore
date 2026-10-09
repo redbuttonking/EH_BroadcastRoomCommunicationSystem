@@ -29,3 +29,14 @@
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Application dependencies and generated output
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+# Locally generated visual verification screenshots
+/artifacts/preview/
+.firebase/
+*.tsbuildinfo
