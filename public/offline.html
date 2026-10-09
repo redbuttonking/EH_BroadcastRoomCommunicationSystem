@@ -6,25 +6,71 @@
     <meta name="color-scheme" content="light dark" />
     <title>연결 확인 · 예배 소통 시스템</title>
     <style>
+      :root {
+        color-scheme: light;
+        --canvas: #f5f4f0;
+        --ink: #252e2a;
+        --muted: #5e6a61;
+        --accent: #425e4d;
+        --accent-ink: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --canvas: #171b1c;
+          --ink: #eeeee7;
+          --muted: #a2aca7;
+          --accent: #bdd0b5;
+          --accent-ink: #1b2b20;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
       body {
-        font-family: system-ui, sans-serif;
-        min-height: 85vh;
+        font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+        margin: 0;
+        min-height: 100dvh;
         display: grid;
         place-content: center;
+        gap: 24px;
         text-align: center;
         padding: 24px;
+        color: var(--ink);
+        background: var(--canvas);
+        word-break: keep-all;
+        overflow-wrap: anywhere;
       }
       h1 {
-        font-size: 22px;
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 1.4;
+        margin: 0;
       }
       p {
-        line-height: 1.8;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0;
       }
       button {
         font: inherit;
-        min-height: 48px;
-        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        min-height: 46px;
+        padding: 12px 18px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: var(--accent-ink);
+        background: var(--accent);
         cursor: pointer;
+      }
+      button:hover {
+        filter: brightness(0.94);
+      }
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
       }
     </style>
   </head>

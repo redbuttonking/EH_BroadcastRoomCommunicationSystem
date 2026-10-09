@@ -25,6 +25,7 @@ export function Button({
   size,
   asChild = false,
   type = 'button',
+  onClick,
   ...props
 }: Props) {
   const Comp = asChild ? Slot : 'button'
@@ -34,6 +35,12 @@ export function Button({
       type={type}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
+      onClick={(event) => {
+        // WebKit does not always focus pointer-activated buttons. Capture the
+        // opener before a dialog moves focus, consistently with keyboard use.
+        if (!event.defaultPrevented) event.currentTarget.focus({ preventScroll: true })
+        onClick?.(event)
+      }}
     />
   )
 }

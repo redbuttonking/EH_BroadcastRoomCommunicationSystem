@@ -13,7 +13,19 @@
   --subtle: #edeee8;
   --border: #dcded5;
   --ink: #252e2a;
-  --muted: #687369;
+  --muted: #5e6a61;
+  --control-border: #7c897e;
+  --font-body: 14px;
+  --font-small: 12px;
+  --font-input: 16px;
+  --font-section: 16px;
+  --font-dialog: 20px;
+  --font-page: 24px;
+  --control-height: 46px;
+  --compact-control: 40px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-dialog: 16px;
   --accent: #425e4d;
   --accent-ink: #ffffff;
   --selected: #e9eee7;
@@ -28,6 +40,7 @@
   --surface: #202526;
   --subtle: #292f30;
   --border: #353d3c;
+  --control-border: #758279;
   --ink: #eeeee7;
   --muted: #a2aca7;
   --accent: #bdd0b5;
@@ -42,6 +55,9 @@
 }
 body {
   margin: 0;
+  font-size: var(--font-body);
+  line-height: 1.6;
+  letter-spacing: 0;
   min-width: 320px;
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -88,6 +104,10 @@ p {
   margin: 0;
   text-wrap: pretty;
 }
+h1,
+h2 {
+  font-weight: 600;
+}
 .ui-button {
   display: inline-flex;
   align-items: center;
@@ -95,23 +115,28 @@ p {
   gap: 8px;
   flex-shrink: 0;
   border: 1px solid transparent;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: var(--radius-control);
+  font-size: var(--font-body);
   font-weight: 600;
+  line-height: 1.5;
   white-space: nowrap;
 }
+.ui-button > svg {
+  width: 18px;
+  height: 18px;
+}
 .button-default {
-  height: 46px;
+  height: var(--control-height);
   padding: 0 18px;
 }
 .button-small {
-  height: 36px;
+  height: var(--compact-control);
   padding: 0 11px;
-  font-size: 13px;
+  font-size: var(--font-body);
 }
 .button-icon {
-  width: 38px;
-  height: 38px;
+  width: var(--compact-control);
+  height: var(--compact-control);
   padding: 0;
 }
 .button-primary {
@@ -121,8 +146,15 @@ p {
 .button-primary:not(:disabled):hover {
   filter: brightness(0.94);
 }
+.button-primary:not(:disabled):active,
+.button-destructive:not(:disabled):active {
+  filter: brightness(0.88);
+}
+.button-destructive:not(:disabled):hover {
+  filter: brightness(0.94);
+}
 .button-outline {
-  border-color: var(--border);
+  border-color: var(--control-border);
   background: var(--surface);
   color: var(--ink);
 }
@@ -135,19 +167,23 @@ p {
   background: var(--subtle);
   color: var(--ink);
 }
+.button-outline:not(:disabled):active,
+.button-ghost:not(:disabled):active {
+  background: var(--selected);
+}
 .button-destructive {
   background: var(--danger);
   color: var(--canvas);
 }
 .ui-input {
   width: 100%;
-  height: 46px;
+  height: var(--control-height);
   padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   background: var(--canvas);
   color: var(--ink);
-  font-size: 16px;
+  font-size: var(--font-input);
 }
 .full-width {
   width: 100%;
@@ -159,7 +195,7 @@ p {
 }
 .preview-strip {
   padding: 5px 12px;
-  font-size: 10px;
+  font-size: var(--font-small);
   text-align: center;
   letter-spacing: 0.03em;
   color: var(--muted);
@@ -174,12 +210,12 @@ p {
   gap: 8px;
   color: var(--warning);
   border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  font-size: var(--font-small);
   background: var(--subtle);
   flex-shrink: 0;
 }
 .connection-banner .ui-button {
-  height: 28px;
+  height: var(--compact-control);
   color: inherit;
 }
 .status-dot {
@@ -198,7 +234,7 @@ p {
   align-items: center;
   gap: 10px;
   font-size: 17px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.6px;
   min-width: 0;
 }
@@ -219,14 +255,6 @@ p {
   height: 100%;
   object-fit: cover;
 }
-.brand-initial {
-  display: inline-block;
-  margin-left: 10px;
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  font-weight: 500;
-}
 .lobby-header {
   display: flex;
   flex-wrap: wrap;
@@ -241,12 +269,12 @@ p {
   display: grid;
   grid-template-columns: 1fr 1.16fr;
   align-items: center;
-  gap: 70px;
+  gap: 64px;
   padding: 35px 0 60px;
 }
 .eyebrow {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-small);
   font-weight: 600;
   color: var(--accent);
   margin-bottom: 24px;
@@ -255,34 +283,29 @@ p {
 .lobby-intro h1 {
   font-size: clamp(34px, 3.3vw, 48px);
   line-height: 1.35;
-  font-weight: 650;
-  letter-spacing: -2px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 .lobby-intro > p {
-  margin-top: 23px;
-  font-size: 14px;
+  margin-top: 24px;
+  font-size: var(--font-body);
   color: var(--muted);
-  line-height: 1.85;
-  letter-spacing: -0.2px;
+  line-height: 1.6;
+  letter-spacing: 0;
 }
 .lobby-note {
   display: flex;
   align-items: center;
   gap: 7px;
   margin-top: 38px;
-  font-size: 11px;
+  font-size: var(--font-small);
   color: var(--muted);
 }
 .entry-panel {
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 27px;
+  border-radius: var(--radius-dialog);
+  padding: 24px;
   background: var(--surface);
-}
-.role-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
 }
 .lobby-actions {
   display: flex;
@@ -300,7 +323,7 @@ p {
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 18px;
-  font-size: 12px;
+  font-size: var(--font-small);
   color: var(--muted);
 }
 .account-summary > span:first-child {
@@ -310,7 +333,7 @@ p {
 .account-summary > span:last-child {
   flex-shrink: 0;
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--font-small);
 }
 .account-role-fields {
   margin: 0;
@@ -320,8 +343,8 @@ p {
 }
 .account-role-fields legend {
   padding: 0;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--font-body);
+  font-weight: 600;
   margin-bottom: 8px;
 }
 .account-role-options {
@@ -334,12 +357,12 @@ p {
   display: flex;
   align-items: center;
   gap: 7px;
-  min-height: 46px;
+  min-height: var(--control-height);
   padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-body);
 }
 .account-role-options label.selected {
   border-color: var(--accent);
@@ -365,20 +388,20 @@ p {
   }
 }
 .auth-heading h2 {
-  font-size: 23px;
-  letter-spacing: -0.7px;
-  font-weight: 650;
+  font-size: var(--font-page);
+  letter-spacing: -0.02em;
+  font-weight: 600;
 }
 .auth-heading p {
   margin-top: 8px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.65;
 }
 .auth-form {
   display: grid;
-  gap: 18px;
-  margin-top: 26px;
+  gap: 16px;
+  margin-top: 24px;
 }
 .auth-field {
   display: grid;
@@ -386,20 +409,20 @@ p {
   min-width: 0;
 }
 .auth-field label {
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--font-body);
+  font-weight: 600;
 }
 .auth-field .password-field {
   margin-bottom: 0;
 }
 .auth-hint {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-small);
   line-height: 1.6;
 }
 .auth-form .error-message {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.6;
 }
 .auth-navigation {
@@ -425,7 +448,7 @@ p {
   background: var(--selected);
   color: var(--accent);
   text-align: center;
-  font-size: 14px;
+  font-size: var(--font-body);
   line-height: 1.75;
 }
 .auth-loading {
@@ -435,7 +458,7 @@ p {
   gap: 16px;
   min-height: 260px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--font-body);
   text-align: center;
   line-height: 1.65;
 }
@@ -451,61 +474,6 @@ p {
   .auth-spinner {
     animation: none;
   }
-}
-.role-card {
-  position: relative;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 21px 16px 18px;
-  color: var(--ink);
-  background: var(--surface);
-  min-width: 0;
-}
-.role-card > svg {
-  color: var(--muted);
-  margin-bottom: 21px;
-}
-.role-card:hover {
-  background: var(--subtle);
-}
-.role-card.selected {
-  border-color: var(--accent);
-  background: var(--selected);
-}
-.role-card.selected > svg {
-  color: var(--accent);
-}
-.role-name {
-  font-size: 16px;
-  font-weight: 650;
-}
-.role-description {
-  font-size: 10px;
-  line-height: 1.6;
-  margin-top: 6px;
-  color: var(--muted);
-  word-break: keep-all;
-}
-.role-selection {
-  position: absolute;
-  right: 12px;
-  top: 14px;
-  color: var(--muted);
-}
-.selected .role-selection {
-  color: var(--accent);
-}
-.choose-role-hint {
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  padding-top: 25px;
 }
 .verification-actions {
   display: flex;
@@ -535,11 +503,11 @@ p {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 13px;
-  font-size: 11px;
+  font-size: var(--font-small);
   color: var(--muted);
 }
 .section-label h2 {
-  font-size: 13px;
+  font-size: var(--font-section);
   color: var(--ink);
   font-weight: 600;
 }
@@ -550,7 +518,7 @@ p {
   gap: 6px;
   padding: 27px 10px;
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   margin-bottom: 16px;
 }
 .no-rooms > svg {
@@ -558,10 +526,10 @@ p {
   color: var(--muted);
 }
 .no-rooms p {
-  font-size: 12px;
+  font-size: var(--font-small);
 }
 .no-rooms span {
-  font-size: 10px;
+  font-size: var(--font-small);
   color: var(--muted);
   text-align: center;
 }
@@ -577,8 +545,8 @@ p {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   color: var(--ink);
   background: var(--canvas);
   text-align: left;
@@ -592,13 +560,8 @@ p {
   gap: 5px;
 }
 .room-option-label {
-  font-size: 11px;
+  font-size: var(--font-small);
   color: var(--muted);
-}
-.room-option-code {
-  letter-spacing: 0.15em;
-  font-size: 19px;
-  font-variant-numeric: tabular-nums;
 }
 .entry-form {
   margin-top: 20px;
@@ -608,40 +571,45 @@ p {
   margin-bottom: 10px;
 }
 .entry-form h2 {
-  font-size: 17px;
+  font-size: var(--font-section);
   font-weight: 600;
 }
 .entry-form > p {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-body);
   line-height: 1.7;
   margin-top: 7px;
 }
 .entry-form label {
   display: block;
-  font-size: 12px;
-  margin: 22px 0 8px;
+  font-size: var(--font-body);
+  margin: 16px 0 8px;
 }
 .password-field {
   position: relative;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .password-field input {
-  padding-right: 45px;
+  padding-right: 48px;
 }
 .password-field .ui-button {
   position: absolute;
-  right: 4px;
-  top: 4px;
+  right: 3px;
+  top: 3px;
 }
 .error-message {
   color: var(--danger) !important;
+  font-size: var(--font-body);
+  line-height: 1.6;
   margin-bottom: 12px;
+}
+.room-exit-dialog .error-message {
+  margin: 16px 0 0;
 }
 .lobby-notice {
   color: var(--muted);
   margin-top: 18px;
-  font-size: 12px;
+  font-size: var(--font-small);
   line-height: 1.7;
 }
 .lobby-footer {
@@ -652,7 +620,7 @@ p {
   margin: 0 5vw;
   padding: 20px 0 25px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-small);
   line-height: 1.65;
   border-top: 1px solid var(--border);
   letter-spacing: 0.03em;
@@ -668,9 +636,9 @@ p {
 .room-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-height: 58px;
-  padding: 7px 16px;
+  padding: 6px 12px;
   flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -684,7 +652,7 @@ p {
 }
 .room-name {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--font-body);
   min-width: 0;
   max-width: 230px;
   overflow: hidden;
@@ -697,7 +665,7 @@ p {
   background: var(--subtle);
   border: 1px solid var(--border);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--font-small);
 }
 .room-toolbar {
   margin-left: auto;
@@ -709,11 +677,11 @@ p {
   max-width: 100%;
 }
 .room-toolbar .button-icon {
-  width: 38px;
-  height: 38px;
+  width: var(--compact-control);
+  height: var(--compact-control);
 }
 .room-toolbar .button-small {
-  height: 38px;
+  height: var(--compact-control);
 }
 @media (max-width: 1100px) {
   .room-header .brand {
@@ -726,12 +694,12 @@ p {
   gap: 2px;
 }
 .font-control > span {
-  font-size: 12px;
+  font-size: var(--font-small);
   color: var(--muted);
   margin-right: 6px;
 }
 .font-control output {
-  font-size: 12px;
+  font-size: var(--font-small);
   font-variant-numeric: tabular-nums;
   width: 22px;
   text-align: center;
@@ -740,7 +708,7 @@ p {
   height: 21px;
   width: 1px;
   background: var(--border);
-  margin: 0 8px;
+  margin: 0 6px;
 }
 .room-layout {
   display: grid;
@@ -750,7 +718,7 @@ p {
   margin: 24px auto;
   width: min(1440px, calc(100% - 60px));
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--surface);
 }
@@ -797,12 +765,12 @@ p {
 }
 .panel-heading h1,
 .panel-heading h2 {
-  font-size: 14px;
-  font-weight: 650;
+  font-size: var(--font-body);
+  font-weight: 600;
 }
 .panel-heading > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-small);
 }
 .presence {
   display: flex;
@@ -823,7 +791,7 @@ p {
   justify-content: center;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: var(--font-small);
   color: var(--muted);
   margin-bottom: 25px;
 }
@@ -833,16 +801,16 @@ p {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-height: 160px;
-  height: calc(100% - 75px);
+  min-height: 0;
+  padding: 20px 0;
   color: var(--muted);
 }
 .chat-empty p {
-  font-size: 14px;
+  font-size: var(--font-body);
   color: var(--ink);
 }
 .chat-empty > span {
-  font-size: 11px;
+  font-size: var(--font-small);
   text-align: center;
   line-height: 1.7;
 }
@@ -857,7 +825,7 @@ p {
   align-items: flex-end;
 }
 .message-author {
-  font-size: 11px;
+  font-size: var(--font-small);
   color: var(--muted);
   margin: 10px 2px 1px;
 }
@@ -889,26 +857,27 @@ p {
   border-radius: 12px 3px 12px 12px;
 }
 .message time {
-  font-size: 9px;
+  font-size: var(--font-small);
   color: var(--muted);
   padding-bottom: 3px;
   white-space: nowrap;
 }
 .pending-message {
-  opacity: 0.7;
+  opacity: 1;
 }
 .pending-caption {
-  font-size: 11px;
+  font-size: var(--font-small);
   color: var(--muted);
 }
 .new-messages {
   position: absolute;
-  bottom: 90px;
+  bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
   box-shadow: 0 2px 8px #00000010;
 }
 .composer-area {
+  position: relative;
   padding: 16px 20px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
@@ -921,22 +890,22 @@ p {
 .composer textarea {
   resize: none;
   width: 100%;
-  min-height: 42px;
+  min-height: var(--control-height);
   max-height: 90px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   background: var(--canvas);
-  font-size: 16px;
+  font-size: var(--font-input);
   line-height: 22px;
   color: var(--ink);
 }
 .composer textarea::placeholder {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--font-input);
 }
 .composer .ui-button {
-  height: 42px;
+  height: var(--control-height);
   width: 44px;
 }
 .presets-panel {
@@ -959,7 +928,7 @@ p {
 .preset-grid {
   display: grid;
   grid-template-columns: 1fr;
-  grid-auto-rows: 1fr;
+  grid-auto-rows: auto;
   gap: 12px;
 }
 .preset-button {
@@ -967,8 +936,8 @@ p {
   grid-template-columns: minmax(0, 1fr) 22px;
   gap: 5px 10px;
   padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   color: var(--ink);
   background: var(--surface);
   text-align: left;
@@ -983,10 +952,18 @@ p {
 .preset-button:not(:disabled):active {
   background: var(--bubble);
 }
+.preset-button[data-cooldown='true']:disabled {
+  opacity: 1;
+}
+.presets-saved {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: var(--font-small);
+}
 .preset-text {
   grid-column: 1;
   font-size: var(--chat-font);
-  font-weight: 550;
+  font-weight: 600;
   line-height: 1.5;
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -999,7 +976,7 @@ p {
   color: var(--muted);
 }
 .preset-footnote {
-  font-size: 10px;
+  font-size: var(--font-small);
   color: var(--muted);
   padding: 0 22px 17px;
   text-align: center;
@@ -1011,13 +988,13 @@ p {
   transform: translateX(-50%);
   padding: 4px 8px 4px 15px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--surface);
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--font-body);
   max-width: 90%;
   box-shadow: 0 3px 14px #00000016;
 }
@@ -1026,9 +1003,9 @@ p {
 }
 .confirm-dialog {
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: clamp(16px, 4vw, 28px);
-  width: min(420px, 90vw);
+  border-radius: var(--radius-dialog);
+  padding: 24px;
+  width: min(420px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
   color: var(--ink);
   background: var(--surface);
   margin: auto;
@@ -1037,14 +1014,14 @@ p {
   background: #00000070;
 }
 .confirm-dialog h2 {
-  font-size: 20px;
-  font-weight: 650;
+  font-size: var(--font-dialog);
+  font-weight: 600;
   margin-bottom: 12px;
 }
 .confirm-dialog p {
-  font-size: 14px;
+  font-size: var(--font-body);
   color: var(--muted);
-  line-height: 1.8;
+  line-height: 1.6;
   word-break: keep-all;
 }
 .dialog-actions {
@@ -1071,8 +1048,12 @@ p {
 .modal-header > .ui-button {
   flex-shrink: 0;
 }
+.modal-header > .ui-button > svg {
+  width: 20px;
+  height: 20px;
+}
 .room-exit-dialog {
-  width: min(520px, 92vw);
+  width: min(520px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
 }
 .dialog-actions-pair {
   display: grid;
@@ -1098,7 +1079,7 @@ p {
 }
 .setup-required p {
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--font-body);
 }
 @media (max-width: 950px) {
   .room-layout {
@@ -1106,7 +1087,7 @@ p {
     margin: 14px auto;
   }
   .lobby-main {
-    gap: 35px;
+    gap: 32px;
   }
   .entry-panel {
     padding: 20px;
@@ -1118,7 +1099,7 @@ p {
     padding: 13px;
   }
   .preset-grid {
-    gap: 9px;
+    gap: 12px;
   }
   .preset-button {
     padding: 13px;
@@ -1127,7 +1108,7 @@ p {
 @media (max-height: 550px) and (orientation: landscape) {
   .preview-strip {
     padding: 2px 10px;
-    font-size: 9px;
+    font-size: var(--font-small);
   }
   .room-layout {
     width: 100%;
@@ -1138,10 +1119,10 @@ p {
   }
   .panel-heading h1,
   .panel-heading h2 {
-    font-size: 12px;
+    font-size: var(--font-body);
   }
   .panel-heading > span {
-    font-size: 10px;
+    font-size: var(--font-small);
   }
   .preset-list {
     padding: 10px;
@@ -1157,7 +1138,7 @@ p {
     display: none;
   }
   .chat-start {
-    font-size: 9px;
+    font-size: var(--font-small);
     margin-bottom: 12px;
   }
   .message-bubble {
@@ -1169,13 +1150,12 @@ p {
   }
   .message-author {
     margin-top: 3px;
-    font-size: 10px;
+    font-size: var(--font-small);
   }
   .message {
     margin-bottom: 9px;
   }
   .chat-empty {
-    min-height: 110px;
     gap: 9px;
   }
   .composer-area {
@@ -1194,27 +1174,21 @@ p {
     padding-top: 12px;
   }
   .lobby-intro h1 {
-    font-size: 31px;
+    font-size: 28px;
   }
   .eyebrow {
     margin-bottom: 12px;
   }
   .lobby-intro > p {
-    font-size: 12px;
+    font-size: var(--font-body);
     margin-top: 14px;
   }
   .lobby-note {
     margin-top: 19px;
-    font-size: 10px;
-  }
-  .role-card {
-    padding: 13px;
-  }
-  .role-card > svg {
-    margin-bottom: 10px;
+    font-size: var(--font-small);
   }
   .entry-panel {
-    padding: 17px;
+    padding: 16px;
   }
   .room-options {
     margin-top: 17px;
@@ -1230,7 +1204,7 @@ p {
   .lobby-main {
     width: 88%;
     grid-template-columns: 1fr;
-    gap: 27px;
+    gap: 24px;
     padding: 10px 0 30px;
     margin: 5px auto;
   }
@@ -1238,8 +1212,8 @@ p {
     display: none;
   }
   .lobby-intro h1 {
-    font-size: 31px;
-    letter-spacing: -1.5px;
+    font-size: 28px;
+    letter-spacing: -0.02em;
   }
   .eyebrow {
     margin-bottom: 12px;
@@ -1277,7 +1251,7 @@ p {
     font-size: 21px;
   }
   .rotate-guide.for-phone p {
-    font-size: 14px;
+    font-size: var(--font-body);
     color: var(--muted);
     line-height: 1.8;
   }
@@ -1301,11 +1275,6 @@ p {
   margin: 8px 0;
   overflow-wrap: anywhere;
 }
-.chat-empty {
-  height: auto;
-  min-height: 0;
-  padding: 20px 0;
-}
 .install-hint {
   display: flex;
   flex-direction: column;
@@ -1313,7 +1282,7 @@ p {
   gap: 8px;
   margin-top: 20px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-small);
   line-height: 1.7;
 }
 .install-hint .ui-button {
@@ -1327,7 +1296,7 @@ p {
 .presets-empty {
   color: var(--muted);
   padding: 16px;
-  font-size: 14px;
+  font-size: var(--font-body);
 }
 .account-presets {
   display: grid;
@@ -1337,14 +1306,14 @@ p {
   border-bottom: 1px solid var(--border);
 }
 .account-presets h2 {
-  font-size: 15px;
+  font-size: var(--font-section);
   margin-bottom: 6px;
 }
 .account-presets p,
 .account-presets > [role='status'],
 .legacy-presets {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-small);
   line-height: 1.7;
 }
 .account-preset-actions {
@@ -1360,7 +1329,7 @@ p {
   border-bottom: 1px solid var(--border);
 }
 .confirm-dialog {
-  max-height: calc(100dvh - 24px);
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow-y: auto;
 }
 @media (pointer: coarse) and (max-width: 1100px) {
@@ -1375,15 +1344,15 @@ p {
     border: 0;
     border-radius: 0;
   }
-  .panel-heading .button-sm {
-    min-height: 42px;
+  .panel-heading .button-small {
+    min-height: 44px;
   }
   .panel-heading h1,
   .panel-heading h2 {
-    font-size: 13px;
+    font-size: var(--font-body);
   }
   .panel-heading .presence {
-    font-size: 11px;
+    font-size: var(--font-small);
   }
   .chat-scroll {
     padding: 8px 10px;
@@ -1403,7 +1372,7 @@ p {
     gap: 8px;
   }
   .preset-button {
-    min-height: 64px;
+    min-height: max(72px, calc(2.8 * var(--chat-font) + 20px));
     padding: 9px 12px;
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
@@ -1451,22 +1420,22 @@ p {
   text-wrap: pretty;
 }
 .install-dialog {
-  width: min(440px, 92vw);
+  width: min(440px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
 }
 .install-platform {
   margin-top: 20px;
 }
 .install-platform h3 {
   margin: 0 0 7px;
-  font-size: 14px;
-  font-weight: 650;
+  font-size: var(--font-body);
+  font-weight: 600;
 }
 .install-platform ol {
   margin: 0;
   padding-left: 20px;
   list-style: decimal;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.85;
 }
 .install-platform li + li {
@@ -1479,7 +1448,7 @@ p {
 }
 .install-dialog .install-after,
 .install-dialog .install-orientation {
-  font-size: 13px;
+  font-size: var(--font-body);
 }
 .install-orientation {
   margin-top: 6px;
@@ -1495,22 +1464,22 @@ p {
   width: 230px;
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--surface);
-  font-size: 12px;
+  font-size: var(--font-body);
   z-index: 5;
 }
 
 .preset-editor {
-  width: min(640px, calc(100vw - 24px));
+  width: min(640px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
   padding: 0;
   overflow: hidden;
 }
 .preset-editor > form {
   display: flex;
   flex-direction: column;
-  height: min(700px, calc(100dvh - 26px));
-  max-height: calc(100dvh - 26px);
+  height: min(700px, calc(100dvh - 26px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  max-height: calc(100dvh - 26px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 .preset-editor .modal-header {
   display: flex;
@@ -1524,11 +1493,11 @@ p {
 }
 .preset-editor .modal-header h2 {
   margin-bottom: 3px;
-  font-size: 19px;
+  font-size: var(--font-dialog);
   padding-top: 0;
 }
 .preset-editor .modal-header p {
-  font-size: 12px;
+  font-size: var(--font-small);
 }
 .editor-scroll {
   position: relative;
@@ -1556,7 +1525,7 @@ p {
   min-width: 0;
   padding: 10px 14px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 .editor-item-heading {
@@ -1564,7 +1533,7 @@ p {
   justify-content: space-between;
   align-items: center;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-small);
 }
 .editor-item-heading > span {
   padding-left: 2px;
@@ -1572,8 +1541,8 @@ p {
 .editor-item .drag-handle {
   touch-action: none;
   cursor: grab;
-  width: 38px;
-  height: 32px;
+  width: var(--compact-control);
+  height: var(--compact-control);
 }
 .editor-item .drag-handle:active {
   cursor: grabbing;
@@ -1593,11 +1562,11 @@ p {
   min-height: 64px;
   max-height: 180px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
   color: var(--ink);
   background: var(--canvas);
-  font-size: 16px;
+  font-size: var(--font-input);
   line-height: 1.5;
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -1608,8 +1577,8 @@ p {
   gap: 4px;
 }
 .editor-item-actions .button-icon {
-  width: 36px;
-  height: 34px;
+  width: var(--compact-control);
+  height: var(--compact-control);
 }
 .add-preset {
   width: 100%;
@@ -1625,11 +1594,11 @@ p {
 .editor-error {
   padding: 8px 24px;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-body);
 }
 .editor-scrollbar {
   display: flex;
-  width: 7px;
+  width: 8px;
   padding: 1px 2px;
   user-select: none;
   touch-action: none;
@@ -1647,6 +1616,15 @@ p {
 }
 .editor-scrollbar[data-state='hidden'] {
   animation: scrollbar-disappear 250ms ease forwards;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.editor-scrollbar[data-pinned='true'] {
+  animation: none;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 @keyframes scrollbar-appear {
   from {
@@ -1659,9 +1637,11 @@ p {
 @keyframes scrollbar-disappear {
   from {
     opacity: 1;
+    visibility: visible;
   }
   to {
     opacity: 0;
+    visibility: hidden;
   }
 }
 .reorder-pulse {
@@ -1695,12 +1675,13 @@ p {
   gap: 16px;
   padding: 20px;
   border: 1px solid var(--accent);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   color: var(--ink);
   background: var(--surface);
   box-shadow: 0 12px 30px #0003;
-  font-size: 16px;
+  font-size: var(--font-input);
   word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .preset-drag-preview svg {
   flex-shrink: 0;
@@ -1728,7 +1709,7 @@ p {
     gap: 2px 12px;
   }
   .preset-editor .modal-header h2 {
-    font-size: 17px;
+    font-size: var(--font-dialog);
     margin: 0;
   }
   .preset-editor .dialog-actions {
@@ -1812,12 +1793,12 @@ p {
 }
 .approval-status p {
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--font-body);
   line-height: 1.8;
 }
 .approval-status .auth-hint {
   margin-top: 16px;
-  font-size: 12px;
+  font-size: var(--font-small);
 }
 .approval-admin-heading {
   display: flex;
@@ -1827,12 +1808,12 @@ p {
   justify-content: space-between;
 }
 .approval-admin h2 {
-  font-size: 20px;
+  font-size: var(--font-page);
 }
 .approval-admin-heading p {
   color: var(--muted);
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.7;
 }
 .approval-filters {
@@ -1858,7 +1839,7 @@ p {
   gap: 12px;
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
 }
 .approval-list > li > svg {
   color: var(--muted);
@@ -1869,11 +1850,11 @@ p {
   min-width: 0;
   display: grid;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--font-body);
 }
 .approval-person > span:last-child {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--font-small);
 }
 .approval-email {
   overflow-wrap: anywhere;
@@ -1892,5 +1873,74 @@ p {
   padding: 36px 0;
   text-align: center;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--font-body);
+}
+
+/* Keep controls and text legible instead of shrinking them to fit a device. */
+@media (pointer: coarse) {
+  :root {
+    --compact-control: 44px;
+  }
+  .password-field .ui-button {
+    top: 1px;
+    right: 1px;
+  }
+}
+@media (max-width: 600px), (max-height: 550px) {
+  :root {
+    --font-dialog: 18px;
+  }
+  .confirm-dialog {
+    padding: 16px;
+  }
+  .preset-editor {
+    padding: 0;
+  }
+}
+@media (max-width: 600px) {
+  .lobby-header.is-signed-out {
+    flex-wrap: nowrap;
+    gap: 12px;
+    padding-block: 16px;
+  }
+  .lobby-header.is-signed-out .brand {
+    flex: 1;
+  }
+  .lobby-main {
+    padding-top: 8px;
+    margin-top: 0;
+  }
+  .lobby-intro {
+    padding-top: 0;
+  }
+  .account-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .approval-filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .approval-filters .ui-button {
+    height: auto;
+    min-height: var(--compact-control);
+    padding: 8px 4px;
+    gap: 2px;
+    flex-direction: column;
+    white-space: normal;
+  }
+}
+/* Browser zoom or a keyboard can leave too little height for two scroll panels. */
+@media (max-height: 260px) {
+  .in-room {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .room-layout {
+    flex: none;
+    min-height: 220px;
+    height: 220px;
+  }
 }
