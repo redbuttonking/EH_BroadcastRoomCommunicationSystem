@@ -108,9 +108,9 @@ Hosting에는 CSP, 외부 프레임 삽입 차단, 권한 제한 헤더가 적�
 
 `.github/workflows/deploy.yml`은 main에서 수동으로 실행하고 확인란에 deploy를 입력한 뒤, 같은 검사가 통과해야 배포하게 구성했다. production 환경의 FIREBASE_API_KEY·FIREBASE_AUTH_DOMAIN·FIREBASE_DATABASE_URL·FIREBASE_WIF_PROVIDER·FIREBASE_DEPLOY_ACCOUNT 변수가 필요하다. 장기 서비스 계정 비밀 키 대신 저장소·main·배포 워크플로·수동 실행으로 제한한 Workload Identity Federation을 사용하도록 준비했다. Firebase 웹 API 키는 앱 식별용이며 관리자 비밀 키가 아니다.
 
-사용자가 배포 계정·권한·인증 연결 생성을 명시적으로 승인하여 연결을 완료했다. github-deploy 서비스 계정에 Hosting·Realtime Database 관리, Firebase 조회, API 사용 권한을 부여했다. 인증은 저장소 ID와 소유자 ID, main 브랜치, deploy.yml, workflow_dispatch가 모두 일치할 때만 허용한다. 사용자 관리 서비스 계정 키는 0개이며 결제 연결도 없다. production 환경 변수 5개를 설정했다. 자동 검사 파일은 공개 저장소에 반영했고 실행 검증 중이다.
+사용자가 배포 계정·권한·인증 연결 생성을 명시적으로 승인하여 연결을 완료했다. github-deploy 서비스 계정에 Hosting·Realtime Database 관리, Firebase 조회, API 사용 권한을 부여했다. 인증은 저장소 ID와 소유자 ID, main 브랜치, deploy.yml, workflow_dispatch가 모두 일치할 때만 허용한다. 사용자 관리 서비스 계정 키는 0개이며 결제 연결도 없다. production 환경 변수 5개를 설정했다. 자동 검사 파일은 공개 저장소에 반영했다. 실행 결과는 GitHub Actions의 각 검사·배포 기록에서 확인한다.
 
-보안 보완 버전은 직접 Firebase CLI로 Hosting·규칙에 배포하고 실제 주소의 파일 12개, 헤더, 대화 흐름과 권한 차단을 검증했다. GitHub 배포 연결의 미완료 상태와는 별개다.
+보안 보완 버전은 직접 Firebase CLI로 Hosting·규칙에 배포하고 실제 주소의 파일 12개, 헤더, 대화 흐름과 권한 차단을 검증했다. 이후 GitHub 배포 전용 인증 연결도 완료했다.
 
 
-배포 실행은 GitHub 저장소의 Actions → Deploy verified version → Run workflow에서 main을 선택하고 확인란에 deploy를 입력한다. 검사 실패 시 배포는 실행되지 않는다. 단순 커밋·푸시는 자동 검사만 시작하며 사이트를 바꾸지 않는다. 첫 GitHub 배포의 실행 결과는 검증 후 개발 기록에 남긴다.
+배포 실행은 GitHub 저장소의 Actions → Deploy verified version → Run workflow에서 main을 선택하고 확인란에 deploy를 입력한다. 검사 실패 시 배포는 실행되지 않는다. 단순 커밋·푸시는 자동 검사만 시작하며 사이트를 바꾸지 않는다. GitHub 배포의 결과와 배포에 사용한 커밋은 Actions의 Deploy verified version 실행 기록에서 확인한다.

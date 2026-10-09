@@ -196,3 +196,6 @@ Firebase Hosting과 데이터베이스 규칙에 반영했고 배포된 파일 1
 배포용 서비스 계정과 Workload Identity Federation을 연결했다. 저장소와 소유자의 숫자 ID, main, 지정 배포 워크플로, 수동 실행 이벤트를 모두 검사한다. Hosting·Realtime Database 관리와 프로젝트 조회·API 사용 권한만 지정했으며 생성한 사용자 관리 비밀 키와 결제 연결은 없다. GitHub production 환경에는 필요한 변수 5개를 설정했다.
 
 첫 GitHub 검사는 브라우저 74개 중 71개를 통과했다. 방 닫기 완료 전에 새로고침하던 시험을 고쳤고, 회전 잠금 시험은 명시적으로 지원 API를 모의 구현하고 비동기 호출을 기다린다. 키보드 문구 이동 시험도 이동 위치 안내를 확인한 후 놓거나 취소하도록 바꾸었다. 관련 Chromium 3개는 통과했으며 전체 GitHub 재검증과 첫 배포를 진행한다. CI 운영체제는 ubuntu-24.04로 고정하여 ubuntu-latest의 예정된 운영체제 교체에 영향을 받지 않도록 했다.
+
+
+후속 재검사에서는 73개가 통과했고 WebKit의 키보드 문구 이동만 실패했다. 키보드 정렬의 스크롤을 즉시 반영하도록 바꾸고, 시험은 마우스 정렬 애니메이션 완료 후 키보드 조작을 시작하게 했다. 변경 후 관련 Chromium 시험을 통과했다. 전체 자동 검사는 단위 6개·데이터베이스 규칙 및 실험 36개·Chromium/WebKit 화면 74개를 대상으로 한다. [수동 배포 실행 기록](https://github.com/redbuttonking/EH_BroadcastRoomCommunicationSystem/actions/runs/37927316672)에서 검사와 배포 결과를 확인할 수 있다. 모든 브라우저 검사를 통과해야 배포 인증 단계에 진입하도록 유지했다. 자동 WebKit 검사는 실제 iPhone·Mac Safari 현장 검증과는 구분한다.
